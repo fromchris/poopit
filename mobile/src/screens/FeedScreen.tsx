@@ -11,8 +11,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeedItem } from "../components/FeedItem";
+import { CommentSheet } from "../sheets/CommentSheet";
+import { OverflowSheet } from "../sheets/OverflowSheet";
+import { RemixSheet } from "../sheets/RemixSheet";
+import { ReportSheet } from "../sheets/ReportSheet";
+import { ShareSheet } from "../sheets/ShareSheet";
 import { useStore } from "../lib/store";
 import type { Playable } from "../lib/types";
+
+type OpenSheet = null | "comments" | "share" | "remix" | "more" | "report";
 
 export function FeedScreen() {
   const feed = useStore((s) => s.feed);
@@ -26,7 +33,9 @@ export function FeedScreen() {
   const insets = useSafeAreaInsets();
   const { height: winH } = Dimensions.get("window");
   const [activeIdx, setActiveIdx] = useState(0);
+  const [sheet, setSheet] = useState<OpenSheet>(null);
   const listRef = useRef<FlatList<Playable>>(null);
+  const current = feed[activeIdx] ?? null;
 
   useEffect(() => {
     if (feed.length === 0 && !loading) {
@@ -45,7 +54,15 @@ export function FeedScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: Playable; index: number }) => (
-      <FeedItem item={item} active={index === activeIdx} height={winH} />
+      <FeedItem
+        item={item}
+        active={index === activeIdx}
+        height={winH}
+        onComment={() => setSheet("comments")}
+        onShare={() => setSheet("share")}
+        onRemix={() => setSheet("remix")}
+        onMore={() => setSheet("more")}
+      />
     ),
     [activeIdx, winH],
   );
@@ -111,6 +128,34 @@ export function FeedScreen() {
           onPress={() => setFeedTab("for-you")}
         />
       </View>
+
+      {/* Sheets */}
+      <CommentSheet
+        item={current}
+        open={sheet === "comments"}
+        onClose={() => setSheet(null)}
+      />
+      <ShareSheet
+        item={current}
+        open={sheet === "share"}
+        onClose={() => setSheet(null)}
+      />
+      <RemixSheet
+        item={current}
+        open={sheet === "remix"}
+        onClose={() => setSheet(null)}
+      />
+      <OverflowSheet
+        item={current}
+        open={sheet === "more"}
+        onClose={() => setSheet(null)}
+        onReport={() => setSheet("report")}
+      />
+      <ReportSheet
+        item={current}
+        open={sheet === "report"}
+        onClose={() => setSheet(null)}
+      />
     </View>
   );
 }

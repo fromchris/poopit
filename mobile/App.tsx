@@ -1,23 +1,44 @@
 import "react-native-gesture-handler";
 import { useEffect, useState } from "react";
+import { Modal, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
 } from "react-native-safe-area-context";
 import { BottomTabs, type Tab } from "./src/components/BottomTabs";
-import { FeedScreen } from "./src/screens/FeedScreen";
-import { PlaceholderScreen } from "./src/screens/PlaceholderScreen";
+import { Toast } from "./src/components/Toast";
 import { useStore } from "./src/lib/store";
+import { subscribeNotifications } from "./src/lib/notifications";
+import { FeedScreen } from "./src/screens/FeedScreen";
+import { SearchScreen } from "./src/screens/SearchScreen";
+import { CreateScreen } from "./src/screens/CreateScreen";
+import { InboxScreen } from "./src/screens/InboxScreen";
+import { ProfileScreen } from "./src/screens/ProfileScreen";
+import { AuthScreen } from "./src/screens/AuthScreen";
 
 export default function App() {
   const boot = useStore((s) => s.boot);
+  const me = useStore((s) => s.me);
+  const booted = useStore((s) => s.booted);
+
+  const [tab, setTab] = useState<Tab>("feed");
+  const [authOpen, setAuthOpen] = useState(false);
+
   useEffect(() => {
     boot().catch(() => {});
   }, [boot]);
 
-  const [tab, setTab] = useState<Tab>("feed");
+  // Open auth sheet once per session for signed-out users.
+  useEffect(() => {
+    if (booted && !me) setAuthOpen(true);
+  }, [booted, me]);
+
+  // Subscribe to server-sent notifications when signed in.
+  useEffect(() => {
+    if (!me) return;
+    return subscribeNotifications();
+  }, [me]);
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
@@ -25,28 +46,36 @@ export default function App() {
       <View style={styles.root}>
         {tab === "feed" && <FeedScreen />}
         {tab === "search" && (
-          <PlaceholderScreen
-            title="Search"
-            hint="Ported next. Feed + one playable are live."
+          <SearchScreen
+            onOpenPlayable={() => {
+              // Jumping to a specific playable in the feed is a
+              // planned follow-up (needs store.feedJumpToId wiring).
+              setTab("feed");
+            }}
           />
         )}
         {tab === "create" && (
-          <PlaceholderScreen
-            title="Create"
-            hint="Prompt + media picker go here."
-          />
+          <CreateScreen onOpenAuth={() => setAuthOpen(true)} />
         )}
-        {tab === "inbox" && (
-          <PlaceholderScreen
-            title="Inbox"
-            hint="Notifications list + SSE stream go here."
-          />
-        )}
+        {tab === "inbox" && <InboxScreen />}
         {tab === "profile" && (
-          <PlaceholderScreen title="Me" hint="Profile tabs go here." />
+          <ProfileScreen
+            onOpenAuth={() => setAuthOpen(true)}
+            onOpenPlayable={() => setTab("feed")}
+            onSignOut={() => setTab("feed")}
+          />
         )}
         <BottomTabs tab={tab} onChange={setTab} />
       </View>
+      <Toast />
+      <Modal
+        visible={authOpen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setAuthOpen(false)}
+      >
+        <AuthScreen onClose={() => setAuthOpen(false)} />
+      </Modal>
     </SafeAreaProvider>
   );
 }

@@ -25,9 +25,21 @@ type Props = {
   item: Playable;
   active: boolean;
   height: number;
+  onComment: () => void;
+  onShare: () => void;
+  onRemix: () => void;
+  onMore: () => void;
 };
 
-export function FeedItem({ item, active, height }: Props) {
+export function FeedItem({
+  item,
+  active,
+  height,
+  onComment,
+  onShare,
+  onRemix,
+  onMore,
+}: Props) {
   const insets = useSafeAreaInsets();
   const toggleLike = useStore((s) => s.toggleLike);
   const toggleFollow = useStore((s) => s.toggleFollow);
@@ -81,22 +93,22 @@ export function FeedItem({ item, active, height }: Props) {
               color={liked ? "#f43f5e" : "#fff"}
             />
           </ActionBtn>
-          <ActionBtn label={formatCount(item.stats.comments)} onPress={() => {}}>
+          <ActionBtn label={formatCount(item.stats.comments)} onPress={onComment}>
             <CommentIcon size={24} />
           </ActionBtn>
           <ActionBtn
             label={formatCount(item.stats.remixes)}
             accent
-            onPress={() => {}}
+            onPress={onRemix}
           >
             <RemixIcon size={24} />
           </ActionBtn>
         </View>
         <View style={styles.actionGroupRight}>
-          <Pressable style={styles.iconBtn} onPress={() => {}}>
+          <Pressable style={styles.iconBtn} onPress={onShare}>
             <ShareIcon size={24} />
           </Pressable>
-          <Pressable style={styles.iconBtn} onPress={() => {}}>
+          <Pressable style={styles.iconBtn} onPress={onMore}>
             <DotsIcon size={20} />
           </Pressable>
         </View>

@@ -18,23 +18,52 @@ adds a parallel native app under `mobile/` that hits the same API.
 
 | Area | Status | Notes |
 |---|---|---|
-| Root shell + bottom tabs | ✅ done | `App.tsx`, `BottomTabs.tsx` |
-| Feed (snap-scroll + infinite) | ✅ done | `FeedScreen` uses `FlatList` pagingEnabled |
-| FeedItem layout | ✅ done | Card + action row + caption row, mirrors web |
-| Gradient backgrounds | ✅ done | `Gradient` via `react-native-svg` |
-| Tailwind color tokens | ✅ done | Parsed out in `lib/theme.ts` |
-| Icons | ✅ partial | Only ones Feed uses — extend as screens are ported |
-| Auth flow | 🟡 todo | Store has `me` slot; signin/signup screens not yet ported |
-| Comment / share / remix sheets | 🟡 todo | Bottom-sheet flows |
-| Create screen | 🟡 todo | Needs native media picker |
-| Inbox / notifications | 🟡 todo | SSE in RN needs a polyfill or polling |
-| Search / profile | 🟡 todo | Placeholder screens render |
-| Interactive drama / llm-bundle | 🟡 todo | Use `react-native-webview` for these two kinds |
-| Playables | 🟡 1 of 12 | BubblePop ported natively; others show a stub label |
+| Root shell + bottom tabs | ✅ | `App.tsx`, `BottomTabs.tsx` |
+| Feed (snap-scroll + infinite) | ✅ | `FeedScreen` uses `FlatList` pagingEnabled |
+| FeedItem layout | ✅ | Card + action row + caption row, mirrors web |
+| Gradient backgrounds | ✅ | `Gradient` via `react-native-svg` |
+| Tailwind color tokens | ✅ | Parsed out in `lib/theme.ts` |
+| Icons | ✅ | 17 icons via `react-native-svg` |
+| Auth flow | ✅ | `AuthScreen`: sign in / sign up / guest + recovery code alert |
+| Bottom sheets | ✅ | Comment / Share / Remix / Overflow / Report |
+| Create screen | ✅ | Prompt + media picker (`expo-image-picker`) + pending jobs poll |
+| Inbox + notifications | ✅ | Read/unread list + SSE via `react-native-sse` |
+| Search | ✅ | Debounced `/api/search` + trending chips + 2-col results |
+| Profile | ✅ | Header + stats + Created/Liked/Remixed tabs + sign-out |
+| Toast | ✅ | Bottom-center floating, fed from store |
+| Playables (12 kinds) | ✅ | All 12 render real content; see table below |
 
-Everything marked ✅ works end-to-end against a running backend. The
-🟡 items render a clean "Coming soon" placeholder so the shell is
-usable while you port the rest.
+All the above work end-to-end against a running backend.
+
+### Playable coverage
+
+| Kind | Status | Approach |
+|---|---|---|
+| bubble-pop | ✅ | Spawn + rise via `requestAnimationFrame` |
+| tap-rain | ✅ | Pressable + fading drops |
+| emoji-stamp | ✅ | Picker palette + tap-to-place |
+| color-splat | ✅ | Random burst of colored circles |
+| draw-pad | ✅ | Finger-draw via responder + `<Polyline>` |
+| squishy-blob | ✅ | Drag + `Animated.spring` |
+| fidget-spinner | ✅ | Flick → velocity decay loop |
+| match-pair | ✅ | 4×4 emoji memory grid |
+| rhythm-tap | ✅ | 600 ms beat, hit-window scoring |
+| shake-mix | ✅ | Tap-to-swap recipes (real shake = `expo-sensors` later) |
+| interactive-drama | ✅ | `react-native-webview` hosts the HTML bundle |
+| llm-bundle | ✅ | Same WebView wrapper as drama |
+
+## Known scope cuts
+
+- **DMs** (`/api/conversations/*`): UI skipped — the web never wired
+  it into a tab either.
+- **Settings sheet / Edit-profile sheet / Followers list sheet**:
+  reachable via Profile in the web; not yet carried over.
+- **Real device-motion shake** for `shake-mix`: uses a tap button
+  instead; `expo-sensors`' `Accelerometer` would be a small add.
+- **Pull-to-refresh** on the feed: web has it; RN uses the snap
+  paging model which makes PTR awkward on vertical feeds.
+- **Jump-to-playable** from search/profile: `feedJumpToId` isn't
+  wired in the store yet; search currently just pops back to feed.
 
 ## Setup
 
@@ -122,7 +151,7 @@ For production, serve HTTPS.
 
 ```
 mobile/
-├── App.tsx                        # root shell: boot() + tab switcher
+├── App.tsx                        # root shell: boot() + tab switcher + auth modal
 ├── index.js                       # registers App with Expo
 ├── app.json                       # Expo config (iOS/Android IDs, perms)
 ├── babel.config.js                # expo preset + reanimated plugin
@@ -130,22 +159,47 @@ mobile/
 └── src/
     ├── lib/
     │   ├── api.ts                 # fetch wrapper w/ CSRF capture + base URL
-    │   ├── store.ts               # zustand: booted, me, feed, like, follow
+    │   ├── store.ts               # zustand: auth, feed, comments, notifications, generate
     │   ├── types.ts               # mirror of app/lib/types.ts (don't drift)
     │   ├── format.ts              # formatCount
-    │   └── theme.ts               # Tailwind → hex + gradient parsing
+    │   ├── theme.ts               # Tailwind → hex + gradient parsing
+    │   ├── uploads.ts             # expo-image-picker → /api/uploads multipart
+    │   └── notifications.ts       # react-native-sse subscriber
     ├── components/
-    │   ├── BottomTabs.tsx         # floating tab bar (Feed/Search/Create/Inbox/Me)
+    │   ├── BottomTabs.tsx         # floating tab bar
+    │   ├── BottomSheet.tsx        # plain Modal + slide animation
     │   ├── FeedItem.tsx           # per-card: rounded playable + actions + caption
     │   ├── Gradient.tsx           # SVG linear gradient helper
-    │   └── Icons.tsx              # react-native-svg icons
+    │   ├── Icons.tsx              # 17 icons via react-native-svg
+    │   └── Toast.tsx              # bottom-center toasts from store
     ├── screens/
-    │   ├── FeedScreen.tsx         # FlatList paging + top Following/For You tabs
-    │   └── PlaceholderScreen.tsx  # used by every not-yet-ported screen
+    │   ├── FeedScreen.tsx         # paging FlatList + Following/For You + sheets
+    │   ├── SearchScreen.tsx       # debounced /api/search + trending chips
+    │   ├── CreateScreen.tsx       # prompt + media picker + pending jobs
+    │   ├── InboxScreen.tsx        # notifications list (SSE-fed)
+    │   ├── ProfileScreen.tsx      # header + stats + created/liked tabs
+    │   ├── AuthScreen.tsx         # sign in / sign up / guest
+    │   └── PlaceholderScreen.tsx  # unused now; kept for future stubs
+    ├── sheets/
+    │   ├── CommentSheet.tsx       # load + post + like + delete comments
+    │   ├── ShareSheet.tsx         # copy link / native Share
+    │   ├── RemixSheet.tsx         # prompt → /api/generate
+    │   ├── OverflowSheet.tsx      # hide / report / delete (if owner)
+    │   └── ReportSheet.tsx        # /api/reports
     └── playables/
-        ├── index.tsx              # kind → native component
-        ├── BubblePop.tsx          # tap bubbles; full native port
-        └── Stub.tsx               # label for not-yet-ported kinds
+        ├── index.tsx              # kind → component
+        ├── BubblePop.tsx          # spawn + rise + pop
+        ├── TapRain.tsx            # tap to spawn falling drops
+        ├── EmojiStamp.tsx         # palette + tap-to-place
+        ├── ColorSplat.tsx         # random colored splats
+        ├── DrawPad.tsx            # responder + <Polyline>
+        ├── SquishyBlob.tsx        # drag + spring
+        ├── FidgetSpinner.tsx      # flick → velocity decay
+        ├── MatchPair.tsx          # 4×4 memory grid
+        ├── RhythmTap.tsx          # beat-timed tap
+        ├── ShakeMix.tsx           # recipe carousel
+        ├── InteractiveDrama.tsx   # react-native-webview host
+        └── Stub.tsx               # kept for future kinds
 ```
 
 ## Extending

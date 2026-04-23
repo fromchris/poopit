@@ -216,3 +216,120 @@ export function DotsIcon({ size = 24, color = "#fff", ...p }: Props) {
     </Svg>
   );
 }
+
+export function XIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M6 6l12 12M18 6 6 18"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function SparkIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M12 2l1.6 5.6L19 9l-5.4 1.4L12 16l-1.6-5.6L5 9l5.4-1.4L12 2Z"
+        fill={color}
+      />
+      <Path
+        d="M19 14l.8 2.4L22 17l-2.2.6L19 20l-.8-2.4L16 17l2.2-.6L19 14Z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
+
+export function TrashIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M10 11v6M14 11v6"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function FlagIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M4 21V4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M4 4h11l-2 4 2 4H4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function HideIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18 18 0 0 1-2.16 3.19M6.71 6.71A18 18 0 0 0 2 12s3 8 10 8a9 9 0 0 0 4.7-1.3M2 2l20 20"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M14.12 14.12a3 3 0 1 1-4.24-4.24"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function LinkIcon({ size = 24, color = "#fff", ...p }: Props) {
+  return (
+    <Svg {...base(size)} {...p}>
+      <Path
+        d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}

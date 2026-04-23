@@ -420,10 +420,11 @@ the web (platform-agnostic). Rewrites the render layer in RN primitives
 (`View` / `Text` / `Pressable`, `react-native-svg` icons, Reanimated
 animations). Same backend, same wire format.
 
-Status: shell + feed + one playable (BubblePop) fully native. Other
-screens/playables render a clean placeholder pending incremental port.
-See [`mobile/README.md`](https://github.com/fromchris/poopit/blob/react-native/mobile/README.md)
-for the porting status table, file layout, and testing workflow.
+Status: full port. Shell, feed, all 5 screens (Feed, Search, Create,
+Inbox, Profile), Auth, all 5 sheets (Comment / Share / Remix / Overflow
+/ Report), and all 12 playable kinds are implemented natively.
+Remaining scope cuts (DMs, Settings sheet, device-motion shake) are
+listed in [`mobile/README.md`](https://github.com/fromchris/poopit/blob/react-native/mobile/README.md).
 
 ```bash
 git checkout react-native
