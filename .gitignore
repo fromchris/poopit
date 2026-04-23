@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# app runtime data (uploads, generated bundles, debug dumps)
+/storage
+
+# build artifact we don't track
+/loopit-prototype.zip

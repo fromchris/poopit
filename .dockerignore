@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+storage
+prisma/*.db
+prisma/*.db-journal
+.env
+.env.local
+.git
+*.log
+.DS_Store
+loopit-prototype.zip
