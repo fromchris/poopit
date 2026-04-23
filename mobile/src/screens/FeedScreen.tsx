@@ -18,6 +18,7 @@ import { RemixSheet } from "../sheets/RemixSheet";
 import { ReportSheet } from "../sheets/ReportSheet";
 import { ShareSheet } from "../sheets/ShareSheet";
 import { useStore } from "../lib/store";
+import { useT } from "../lib/i18n";
 import type { Playable } from "../lib/types";
 
 type OpenSheet = null | "comments" | "share" | "remix" | "more" | "report";
@@ -40,6 +41,7 @@ export function FeedScreen() {
   const [sheet, setSheet] = useState<OpenSheet>(null);
   const listRef = useRef<FlatList<Playable>>(null);
   const current = feed[activeIdx] ?? null;
+  const t = useT();
 
   useEffect(() => {
     if (feed.length === 0 && !loading) {
@@ -100,10 +102,10 @@ export function FeedScreen() {
   if (error && feed.length === 0) {
     return (
       <View style={styles.full}>
-        <Text style={styles.errTitle}>Couldn't load feed</Text>
+        <Text style={styles.errTitle}>{t("feed.error.title")}</Text>
         <Text style={styles.errBody}>{error}</Text>
         <Pressable style={styles.retryBtn} onPress={() => loadFeed(true)}>
-          <Text style={styles.retryText}>Try again</Text>
+          <Text style={styles.retryText}>{t("feed.retry")}</Text>
         </Pressable>
       </View>
     );
@@ -150,12 +152,12 @@ export function FeedScreen() {
       {/* Top bar overlay */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <TopTab
-          label="Following"
+          label={t("top.following")}
           active={feedTab === "following"}
           onPress={() => setFeedTab("following")}
         />
         <TopTab
-          label="For You"
+          label={t("top.forYou")}
           active={feedTab === "for-you"}
           onPress={() => setFeedTab("for-you")}
         />

@@ -9,6 +9,8 @@ import {
 import { BottomTabs, type Tab } from "./src/components/BottomTabs";
 import { Toast } from "./src/components/Toast";
 import { useStore } from "./src/lib/store";
+import { useLocale } from "./src/lib/i18n";
+import { usePrefs } from "./src/lib/prefs";
 import { subscribeNotifications } from "./src/lib/notifications";
 import { FeedScreen } from "./src/screens/FeedScreen";
 import { SearchScreen } from "./src/screens/SearchScreen";
@@ -23,6 +25,8 @@ export default function App() {
   const me = useStore((s) => s.me);
   const booted = useStore((s) => s.booted);
   const jumpToPlayable = useStore((s) => s.jumpToPlayable);
+  const hydrateLocale = useLocale((s) => s.hydrate);
+  const hydratePrefs = usePrefs((s) => s.hydrate);
 
   const [tab, setTab] = useState<Tab>("feed");
   const [authOpen, setAuthOpen] = useState(false);
@@ -33,8 +37,10 @@ export default function App() {
   };
 
   useEffect(() => {
+    hydrateLocale();
+    hydratePrefs();
     boot().catch(() => {});
-  }, [boot]);
+  }, [boot, hydrateLocale, hydratePrefs]);
 
   // Open auth sheet once per session for signed-out users.
   useEffect(() => {

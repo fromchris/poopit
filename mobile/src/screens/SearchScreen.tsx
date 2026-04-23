@@ -16,6 +16,7 @@ import { Gradient } from "../components/Gradient";
 import { SearchIcon } from "../components/Icons";
 import { api } from "../lib/api";
 import { formatCount } from "../lib/format";
+import { useT } from "../lib/i18n";
 import { parseGradient } from "../lib/theme";
 import { useStore } from "../lib/store";
 import type { Playable } from "../lib/types";
@@ -36,6 +37,7 @@ export function SearchScreen({
   onOpenPlayable: (p: Playable) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const feed = useStore((s) => s.feed);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Playable[] | null>(null);
@@ -80,7 +82,7 @@ export function SearchScreen({
         <TextInput
           value={q}
           onChangeText={setQ}
-          placeholder="Search playables, creators, tags"
+          placeholder={t("search.placeholder")}
           placeholderTextColor="#ffffff70"
           style={styles.searchInput}
           autoCorrect={false}
@@ -92,15 +94,15 @@ export function SearchScreen({
 
       {results === null ? (
         <View style={styles.trendingWrap}>
-          <Text style={styles.trendingHeader}>Trending</Text>
+          <Text style={styles.trendingHeader}>{t("search.trending")}</Text>
           <View style={styles.chips}>
-            {trendingChips.map((t) => (
+            {trendingChips.map((tag) => (
               <Pressable
-                key={t}
+                key={tag}
                 style={styles.chip}
-                onPress={() => setQ(t)}
+                onPress={() => setQ(tag)}
               >
-                <Text style={styles.chipText}>#{t}</Text>
+                <Text style={styles.chipText}>#{tag}</Text>
               </Pressable>
             ))}
           </View>
@@ -111,7 +113,7 @@ export function SearchScreen({
         </View>
       ) : results.length === 0 ? (
         <View style={styles.loading}>
-          <Text style={styles.emptyText}>No matches.</Text>
+          <Text style={styles.emptyText}>{t("search.noMatches")}</Text>
         </View>
       ) : (
         <FlatList

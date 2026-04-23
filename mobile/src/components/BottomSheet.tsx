@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePrefs } from "../lib/prefs";
 import { XIcon } from "./Icons";
 
 export function BottomSheet({
@@ -32,19 +33,20 @@ export function BottomSheet({
   const cap = maxHeight ?? Math.floor(winH * 0.85);
   const slide = useRef(new Animated.Value(winH)).current;
   const insets = useSafeAreaInsets();
+  const reducedMotion = usePrefs((s) => s.reducedMotion);
 
   useEffect(() => {
     if (open) {
       Animated.timing(slide, {
         toValue: 0,
-        duration: 260,
+        duration: reducedMotion ? 0 : 260,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     } else {
       slide.setValue(winH);
     }
-  }, [open, slide, winH]);
+  }, [open, slide, winH, reducedMotion]);
 
   return (
     <Modal

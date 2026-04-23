@@ -16,6 +16,7 @@ import { Gradient } from "../components/Gradient";
 import { SettingsIcon } from "../components/Icons";
 import { api, ApiError } from "../lib/api";
 import { formatCount } from "../lib/format";
+import { useT } from "../lib/i18n";
 import { parseGradient } from "../lib/theme";
 import { useStore } from "../lib/store";
 import type { Playable } from "../lib/types";
@@ -49,6 +50,7 @@ export function ProfileScreen({
   onSignOut?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const me = useStore((s) => s.me);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tab, setTab] = useState<Tab>("created");
@@ -90,12 +92,10 @@ export function ProfileScreen({
   if (!me) {
     return (
       <View style={[styles.full, { paddingTop: insets.top + 40 }]}>
-        <Text style={styles.emptyTitle}>Me</Text>
-        <Text style={styles.emptyText}>
-          Sign in to see your profile
-        </Text>
+        <Text style={styles.emptyTitle}>{t("tab.me")}</Text>
+        <Text style={styles.emptyText}>{t("profile.signInPrompt")}</Text>
         <Pressable onPress={onOpenAuth} style={styles.primaryBtn}>
-          <Text style={styles.primaryText}>Sign in or create account</Text>
+          <Text style={styles.primaryText}>{t("profile.signInCta")}</Text>
         </Pressable>
       </View>
     );
@@ -137,18 +137,24 @@ export function ProfileScreen({
 
               {/* Stats */}
               <View style={styles.statsRow}>
-                <Stat n={profile?.stats.playables ?? 0} label="playables" />
+                <Stat
+                  n={profile?.stats.playables ?? 0}
+                  label={t("profile.stat.playables")}
+                />
                 <Stat
                   n={profile?.stats.followers ?? 0}
-                  label="followers"
+                  label={t("profile.stat.followers")}
                   onPress={() => setFollowSheet("followers")}
                 />
                 <Stat
                   n={profile?.stats.following ?? 0}
-                  label="following"
+                  label={t("profile.stat.following")}
                   onPress={() => setFollowSheet("following")}
                 />
-                <Stat n={profile?.stats.likes ?? 0} label="likes" />
+                <Stat
+                  n={profile?.stats.likes ?? 0}
+                  label={t("profile.stat.likes")}
+                />
               </View>
 
               {/* Actions */}
@@ -157,7 +163,7 @@ export function ProfileScreen({
                   onPress={() => setEditOpen(true)}
                   style={styles.ghostBtn}
                 >
-                  <Text style={styles.ghostText}>Edit profile</Text>
+                  <Text style={styles.ghostText}>{t("profile.edit")}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setSettingsOpen(true)}
@@ -172,17 +178,17 @@ export function ProfileScreen({
             {/* Tabs */}
             <View style={styles.tabs}>
               <TabBtn
-                label="Created"
+                label={t("profile.sub.created")}
                 active={tab === "created"}
                 onPress={() => setTab("created")}
               />
               <TabBtn
-                label="Liked"
+                label={t("profile.sub.liked")}
                 active={tab === "liked"}
                 onPress={() => setTab("liked")}
               />
               <TabBtn
-                label="Remixed"
+                label={t("profile.sub.remixed")}
                 active={tab === "remixed"}
                 onPress={() => setTab("remixed")}
               />
@@ -201,10 +207,10 @@ export function ProfileScreen({
             <View style={styles.empty}>
               <Text style={styles.emptyText}>
                 {tab === "created"
-                  ? "Make your first playable from the Create tab."
+                  ? t("profile.empty.created")
                   : tab === "liked"
-                    ? "Tap ❤️ on a playable to save it here."
-                    : "Your remixes will appear here."}
+                    ? t("profile.empty.liked")
+                    : t("profile.empty.remixed")}
               </Text>
             </View>
           ) : null

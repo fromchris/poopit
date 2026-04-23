@@ -17,33 +17,26 @@ import { Gradient } from "../components/Gradient";
 import { MessagesList } from "../components/MessagesList";
 import { parseGradient } from "../lib/theme";
 import { useStore, type Notification } from "../lib/store";
+import { useT } from "../lib/i18n";
 import { ConversationScreen } from "./ConversationScreen";
 
 type OuterTab = "notifications" | "messages";
 type SubTab = "all" | "like" | "comment" | "follow";
 
-const SUBTABS: { id: SubTab; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "like", label: "Likes" },
-  { id: "comment", label: "Comments" },
-  { id: "follow", label: "Follows" },
-];
-
-const LABELS: Record<string, string> = {
-  like: "liked your playable",
-  comment: "commented on",
-  follow: "started following you",
-  remix: "remixed",
-  generation_ready: "your playable is ready",
-  generation_failed: "generation failed",
-};
-
 export function InboxScreen() {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const me = useStore((s) => s.me);
   const notifications = useStore((s) => s.notifications);
   const loadNotifications = useStore((s) => s.loadNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
+
+  const SUBTABS: { id: SubTab; label: string }[] = [
+    { id: "all", label: t("inbox.tab.all") },
+    { id: "like", label: t("inbox.tab.likes") },
+    { id: "comment", label: t("inbox.tab.comments") },
+    { id: "follow", label: t("inbox.tab.follows") },
+  ];
 
   const [outer, setOuter] = useState<OuterTab>("notifications");
   const [inner, setInner] = useState<SubTab>("all");
@@ -59,8 +52,8 @@ export function InboxScreen() {
   if (!me) {
     return (
       <View style={[styles.full, { paddingTop: insets.top + 40 }]}>
-        <Text style={styles.emptyTitle}>Inbox</Text>
-        <Text style={styles.emptyText}>Sign in to see your Inbox</Text>
+        <Text style={styles.emptyTitle}>{t("inbox.title")}</Text>
+        <Text style={styles.emptyText}>{t("inbox.signIn")}</Text>
       </View>
     );
   }
@@ -71,16 +64,16 @@ export function InboxScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.header}>Inbox</Text>
+      <Text style={styles.header}>{t("inbox.title")}</Text>
       <View style={styles.outerTabs}>
         <OuterBtn
           active={outer === "notifications"}
-          label="Notifications"
+          label={t("inbox.notifications")}
           onPress={() => setOuter("notifications")}
         />
         <OuterBtn
           active={outer === "messages"}
-          label="Messages"
+          label={t("inbox.messages")}
           onPress={() => setOuter("messages")}
         />
       </View>
@@ -114,14 +107,14 @@ export function InboxScreen() {
           </ScrollView>
           {filtered.length === 0 ? (
             <View style={styles.full}>
-              <Text style={styles.emptyText}>Nothing new here.</Text>
+              <Text style={styles.emptyText}>{t("inbox.empty")}</Text>
             </View>
           ) : (
             <FlatList
               data={filtered}
               keyExtractor={(n) => n.id}
               contentContainerStyle={{ paddingBottom: 120 }}
-              renderItem={({ item }) => <Row n={item} />}
+              renderItem={({ item }) => <Row n={item} t={t} />}
             />
           )}
         </>
@@ -175,8 +168,15 @@ function OuterBtn({
   );
 }
 
-function Row({ n }: { n: Notification }) {
+function Row({
+  n,
+  t,
+}: {
+  n: Notification;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
   const stops = parseGradient(n.avatarBg);
+  const labelKey = `inbox.action.${n.type}`;
   return (
     <Pressable style={[styles.row, !n.read && styles.rowUnread]}>
       <View style={styles.avatar}>
@@ -187,7 +187,7 @@ function Row({ n }: { n: Notification }) {
         <Text numberOfLines={2} style={styles.body}>
           <Text style={styles.handle}>{n.handle}</Text>{" "}
           <Text style={styles.bodyText}>
-            {LABELS[n.type] ?? n.type}
+            {t(labelKey)}
             {n.target ? ` "${n.target}"` : ""}
           </Text>
         </Text>

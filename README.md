@@ -424,8 +424,9 @@ Status: full port. Shell, feed (snap-scroll + pull-to-refresh +
 jump-to-playable), all 5 screens, Auth, DMs (conversations list +
 streaming conversation view), all 8 sheets (Comment / Share / Remix /
 Overflow / Report / Settings / EditProfile / FollowList), accelerometer
-shake detection, and all 12 playable kinds are implemented natively.
-See [`mobile/README.md`](https://github.com/fromchris/poopit/blob/react-native/mobile/README.md)
+shake detection, i18n (en / zh) with a language picker, reduced-motion
+and data-saver preferences, and all 12 playable kinds are implemented
+natively. See [`mobile/README.md`](https://github.com/fromchris/poopit/blob/react-native/mobile/README.md)
 for the full porting status table.
 
 ```bash

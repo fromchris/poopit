@@ -33,6 +33,9 @@ adds a parallel native app under `mobile/` that hits the same API.
 | Search | ✅ | Debounced `/api/search` + trending chips + 2-col results |
 | Profile | ✅ | Header + stats + Created/Liked tabs + gear → Settings |
 | Toast | ✅ | Bottom-center floating, fed from store |
+| i18n (en / zh) | ✅ | Full dict port + `useT()` hook; language picker in Settings |
+| Reduced-motion preference | ✅ | Toggle wired into sheet + toast animation durations |
+| Data-saver preference | ✅ | Toggle persisted; consult via `usePrefs()` from any component |
 | Playables (12 kinds) | ✅ | All 12 render real content; see table below |
 
 All the above work end-to-end against a running backend.
@@ -56,12 +59,13 @@ All the above work end-to-end against a running backend.
 
 ## Known scope cuts
 
-- **Reduced-motion / data-saver toggles** and the **language picker**
-  live in the web's Settings sheet. The RN Settings sheet is
-  account-focused only (i18n strings on RN would need the web's dict
-  port, which wasn't a goal).
 - **Report triage UI** isn't in the web either — reports land in the
   DB for out-of-band review.
+- **i18n coverage is opinionated**, not exhaustive. The dict ports all
+  user-visible strings the screens surface today; a handful of inline
+  strings in sheets (e.g. the remix idea chips) stay English because
+  they're placeholder prompts rather than chrome. Add keys to
+  `src/lib/i18n.ts` and swap to `t(...)` as you go.
 
 ## Setup
 
@@ -161,6 +165,8 @@ mobile/
     │   ├── types.ts               # mirror of app/lib/types.ts (don't drift)
     │   ├── format.ts              # formatCount
     │   ├── theme.ts               # Tailwind → hex + gradient parsing
+    │   ├── i18n.ts                # en / zh dicts + useT() + AsyncStorage-persisted locale
+    │   ├── prefs.ts               # reducedMotion + dataSaver, AsyncStorage-persisted
     │   ├── uploads.ts             # expo-image-picker → /api/uploads multipart
     │   └── notifications.ts       # react-native-sse subscriber
     ├── components/
@@ -185,7 +191,7 @@ mobile/
     │   ├── RemixSheet.tsx         # prompt → /api/generate
     │   ├── OverflowSheet.tsx      # hide / report / delete (if owner)
     │   ├── ReportSheet.tsx        # /api/reports
-    │   ├── SettingsSheet.tsx      # account + sign-out (reduced-motion skipped)
+    │   ├── SettingsSheet.tsx      # account, playback toggles, language picker, sign out
     │   ├── EditProfileSheet.tsx   # handle / bio / avatar emoji
     │   └── FollowListSheet.tsx    # followers / following with in-line follow btn
     └── playables/

@@ -16,11 +16,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError } from "../lib/api";
+import { useT } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { XIcon } from "../components/Icons";
 
 export function AuthScreen({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const signIn = useStore((s) => s.signIn);
   const signUp = useStore((s) => s.signUp);
   const signInAsGuest = useStore((s) => s.signInAsGuest);
@@ -58,9 +60,9 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
     try {
       const r = await signInAsGuest();
       Alert.alert(
-        "Recovery code",
-        `Save this somewhere safe — it's the only way back in if you lose your session:\n\n${r.recoveryCode}`,
-        [{ text: "Got it", onPress: onClose }],
+        t("auth.recoveryTitle"),
+        t("auth.recoveryBody", { code: r.recoveryCode }),
+        [{ text: t("auth.gotIt"), onPress: onClose }],
       );
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Guest sign-in failed");
@@ -88,18 +90,18 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
         </View>
 
         <Text style={styles.h1}>
-          {mode === "signin" ? "Welcome back" : "Make an account"}
+          {mode === "signin" ? t("auth.welcomeBack") : t("auth.makeAccount")}
         </Text>
         <Text style={styles.sub}>
           {mode === "signin"
-            ? "Sign in to like, comment, and publish."
-            : "Claim a handle so your playables + likes stick around."}
+            ? t("auth.welcomeHint")
+            : t("auth.makeAccountHint")}
         </Text>
 
         <TextInput
           value={handle}
           onChangeText={setHandle}
-          placeholder="@handle"
+          placeholder={t("auth.handle")}
           placeholderTextColor="#ffffff55"
           autoCapitalize="none"
           autoCorrect={false}
@@ -108,7 +110,7 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
         <TextInput
           value={password}
           onChangeText={setPassword}
-          placeholder="password"
+          placeholder={t("auth.password")}
           placeholderTextColor="#ffffff55"
           secureTextEntry
           autoCapitalize="none"
@@ -126,7 +128,7 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
             <ActivityIndicator color="#000" />
           ) : (
             <Text style={styles.primaryBtnText}>
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {mode === "signin" ? t("auth.signIn") : t("auth.createAccount")}
             </Text>
           )}
         </Pressable>
@@ -136,15 +138,13 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
           style={styles.linkBtn}
         >
           <Text style={styles.linkText}>
-            {mode === "signin"
-              ? "New? Make one"
-              : "Have an account? Sign in"}
+            {mode === "signin" ? t("auth.new") : t("auth.haveAccount")}
           </Text>
         </Pressable>
 
         <View style={styles.divider}>
           <View style={styles.line} />
-          <Text style={styles.orText}>or</Text>
+          <Text style={styles.orText}>{t("auth.or")}</Text>
           <View style={styles.line} />
         </View>
 
@@ -153,11 +153,9 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
           disabled={busy}
           style={[styles.ghostBtn, busy && { opacity: 0.6 }]}
         >
-          <Text style={styles.ghostBtnText}>Try as guest</Text>
+          <Text style={styles.ghostBtnText}>{t("auth.tryGuest")}</Text>
         </Pressable>
-        <Text style={styles.hint}>
-          Demo accounts: @you.loop / looploop
-        </Text>
+        <Text style={styles.hint}>{t("auth.demoHint")}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SparkIcon, XIcon } from "../components/Icons";
 import { api } from "../lib/api";
+import { useT } from "../lib/i18n";
 import { pickMedia, uploadAsset, type UploadedMedia } from "../lib/uploads";
 import { useStore } from "../lib/store";
 
@@ -43,6 +44,7 @@ export function CreateScreen({
   onOpenAuth: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const me = useStore((s) => s.me);
   const startGenerate = useStore((s) => s.startGenerate);
 
@@ -129,11 +131,8 @@ export function CreateScreen({
         }}
         ListHeaderComponent={
           <View>
-            <Text style={styles.h1}>Make a playable</Text>
-            <Text style={styles.sub}>
-              Describe an idea. The AI writes the whole thing — logic, art,
-              and all.
-            </Text>
+            <Text style={styles.h1}>{t("create.title")}</Text>
+            <Text style={styles.sub}>{t("create.sub")}</Text>
 
             <View style={styles.inputWrap}>
               <TextInput
@@ -141,7 +140,7 @@ export function CreateScreen({
                 onChangeText={setPrompt}
                 multiline
                 numberOfLines={4}
-                placeholder="a cat that purrs louder the more you pet it…"
+                placeholder={t("create.prompt.placeholder")}
                 placeholderTextColor="#ffffff55"
                 style={styles.input}
                 maxLength={240}
@@ -164,7 +163,9 @@ export function CreateScreen({
                 ) : (
                   <>
                     <SparkIcon size={16} />
-                    <Text style={styles.generateText}>Generate</Text>
+                    <Text style={styles.generateText}>
+                      {t("create.generate")}
+                    </Text>
                   </>
                 )}
               </Pressable>
@@ -176,14 +177,14 @@ export function CreateScreen({
                 style={styles.mediaBtn}
               >
                 <Text style={styles.mediaEmoji}>📷</Text>
-                <Text style={styles.mediaLabel}>Photo</Text>
+                <Text style={styles.mediaLabel}>{t("create.photo")}</Text>
               </Pressable>
               <Pressable
                 onPress={() => addMedia("video")}
                 style={styles.mediaBtn}
               >
                 <Text style={styles.mediaEmoji}>🎥</Text>
-                <Text style={styles.mediaLabel}>Video</Text>
+                <Text style={styles.mediaLabel}>{t("create.video")}</Text>
               </Pressable>
               {uploading && <ActivityIndicator color="#ec4899" />}
             </View>
@@ -224,32 +225,38 @@ export function CreateScreen({
             </View>
 
             {jobs.length > 0 && (
-              <Text style={styles.jobsHeader}>Your latest generations</Text>
+              <Text style={styles.jobsHeader}>{t("create.jobs")}</Text>
             )}
           </View>
         }
-        renderItem={({ item: job }) => <JobRow job={job} />}
+        renderItem={({ item: job }) => <JobRow job={job} t={t} />}
       />
     </KeyboardAvoidingView>
   );
 }
 
-function JobRow({ job }: { job: PendingJob }) {
+function JobRow({
+  job,
+  t,
+}: {
+  job: PendingJob;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  const statusKey =
+    job.status === "queued"
+      ? "create.job.queued"
+      : job.status === "running"
+        ? "create.job.running"
+        : job.status === "failed"
+          ? "create.job.failed"
+          : "create.job.succeeded";
   return (
     <View style={styles.jobRow}>
       <View style={{ flex: 1 }}>
         <Text numberOfLines={2} style={styles.jobPrompt}>
           {job.prompt}
         </Text>
-        <Text style={styles.jobStatus}>
-          {job.status === "queued"
-            ? "Queued…"
-            : job.status === "running"
-              ? "Generating…"
-              : job.status === "failed"
-                ? "Failed"
-                : "Published"}
-        </Text>
+        <Text style={styles.jobStatus}>{t(statusKey)}</Text>
       </View>
       {(job.status === "queued" || job.status === "running") && (
         <ActivityIndicator color="#ec4899" />

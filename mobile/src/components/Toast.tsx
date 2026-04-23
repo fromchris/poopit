@@ -3,30 +3,33 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
 
 export function Toast() {
   const messages = useStore((s) => s.toasts);
+  const reducedMotion = usePrefs((s) => s.reducedMotion);
   const insets = useSafeAreaInsets();
   const slide = useRef(new Animated.Value(60)).current;
 
   useEffect(() => {
+    const duration = reducedMotion ? 0 : 220;
     if (messages.length > 0) {
       Animated.timing(slide, {
         toValue: 0,
-        duration: 220,
+        duration,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(slide, {
         toValue: 60,
-        duration: 220,
+        duration,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }
-  }, [messages.length, slide]);
+  }, [messages.length, slide, reducedMotion]);
 
   if (messages.length === 0) return null;
 

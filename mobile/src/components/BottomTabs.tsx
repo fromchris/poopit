@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useT } from "../lib/i18n";
 import { HomeIcon, InboxIcon, PlusIcon, SearchIcon, UserIcon } from "./Icons";
 
 export type Tab = "feed" | "search" | "create" | "inbox" | "profile";
@@ -12,16 +13,17 @@ export function BottomTabs({
   onChange: (t: Tab) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(8, insets.bottom) }]}>
       <TabButton
-        label="Feed"
+        label={t("tab.feed")}
         active={tab === "feed"}
         onPress={() => onChange("feed")}
         icon={<HomeIcon size={24} filled={tab === "feed"} />}
       />
       <TabButton
-        label="Search"
+        label={t("tab.search")}
         active={tab === "search"}
         onPress={() => onChange("search")}
         icon={<SearchIcon size={24} />}
@@ -30,13 +32,13 @@ export function BottomTabs({
         <PlusIcon size={28} />
       </Pressable>
       <TabButton
-        label="Inbox"
+        label={t("tab.inbox")}
         active={tab === "inbox"}
         onPress={() => onChange("inbox")}
         icon={<InboxIcon size={24} filled={tab === "inbox"} />}
       />
       <TabButton
-        label="Me"
+        label={t("tab.me")}
         active={tab === "profile"}
         onPress={() => onChange("profile")}
         icon={<UserIcon size={24} filled={tab === "profile"} />}
