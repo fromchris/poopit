@@ -409,7 +409,26 @@ Swapping the backend URL later: change `CAPACITOR_SERVER_URL`, rerun
 `pnpm cap:sync`, rebuild. The native binary itself doesn't need to
 change.
 
-### Option C — TWA (Android-only, smaller footprint)
+### Option C — React Native / Expo shell
+
+A functionally equivalent alternative to Capacitor, built on React
+Native via Expo. Lives on the `react-native` branch under
+[`mobile/`](https://github.com/fromchris/poopit/tree/react-native/mobile).
+
+```bash
+git checkout react-native
+cd mobile
+npm install
+export EXPO_PUBLIC_BACKEND_URL=https://loopit.example.com
+npm run ios        # or: npm run android
+```
+
+Same WebView pattern — native shell points at the deployed backend,
+no frontend code duplicated. Pick this over Capacitor only if you
+already have a React Native toolchain in the org, or you're
+planning to add native screens alongside the WebView later.
+
+### Option D — TWA (Android-only, smaller footprint)
 
 If you only need Play Store presence, Google's
 [bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) wraps
