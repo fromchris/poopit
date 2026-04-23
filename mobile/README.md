@@ -1,25 +1,40 @@
-# Loopit — React Native (Expo) shell
+# Loopit — React Native (Expo) app
 
-Thin native iOS / Android wrapper around the Loopit web app. No frontend
-code is duplicated — the WebView loads the deployed Next.js backend,
-and the web's PWA manifest + service worker handle the "app" feel. All
-features (feed, likes, comments, generation, SSE notifications, drama
-iframes) work unchanged.
+Native iOS + Android port of the Loopit prototype. Uses the same Next.js
+backend (auth, feed, generation agent, SSE) — only the client is rewritten.
 
-This is the React Native counterpart to the Capacitor setup on `master`.
-Same idea, different native host.
+The web frontend in `app/` on `master` is **not touched**. This branch
+adds a parallel native app under `mobile/` that hits the same API.
 
-## Why WebView instead of a component port
+## Porting status
 
-The constraint was: ship on iOS / Android **without changing the web
-frontend's presentation or logic**. A true React-Native-component port
-would require rewriting every `<div>` into `<View>`, every Tailwind
-class into a `StyleSheet`, every `framer-motion` animation into
-`reanimated` — that's a new frontend, not the same one.
+**Logic (reused as-is, platform-agnostic):**
 
-A WebView shell keeps the web's rendering exactly as-is. When you ship
-an update to the backend, the native app sees it on next launch — no
-re-submission to the app store for JS-only changes.
+- Zustand store shape, action names
+- Type definitions (`Playable`, `Me`, `FeedTab`, …)
+- Wire format to the backend
+
+**Presentation (rewritten in RN — can't literally reuse DOM):**
+
+| Area | Status | Notes |
+|---|---|---|
+| Root shell + bottom tabs | ✅ done | `App.tsx`, `BottomTabs.tsx` |
+| Feed (snap-scroll + infinite) | ✅ done | `FeedScreen` uses `FlatList` pagingEnabled |
+| FeedItem layout | ✅ done | Card + action row + caption row, mirrors web |
+| Gradient backgrounds | ✅ done | `Gradient` via `react-native-svg` |
+| Tailwind color tokens | ✅ done | Parsed out in `lib/theme.ts` |
+| Icons | ✅ partial | Only ones Feed uses — extend as screens are ported |
+| Auth flow | 🟡 todo | Store has `me` slot; signin/signup screens not yet ported |
+| Comment / share / remix sheets | 🟡 todo | Bottom-sheet flows |
+| Create screen | 🟡 todo | Needs native media picker |
+| Inbox / notifications | 🟡 todo | SSE in RN needs a polyfill or polling |
+| Search / profile | 🟡 todo | Placeholder screens render |
+| Interactive drama / llm-bundle | 🟡 todo | Use `react-native-webview` for these two kinds |
+| Playables | 🟡 1 of 12 | BubblePop ported natively; others show a stub label |
+
+Everything marked ✅ works end-to-end against a running backend. The
+🟡 items render a clean "Coming soon" placeholder so the shell is
+usable while you port the rest.
 
 ## Setup
 
@@ -27,71 +42,149 @@ re-submission to the app store for JS-only changes.
 cd mobile
 npm install
 
-# Point at your deployed Loopit backend.
-# For local development against a dev server, use your machine's LAN IP
-# (the simulator can't reach localhost on its own).
-export EXPO_PUBLIC_BACKEND_URL=https://loopit.example.com
-
-# Metro dev server + QR code for Expo Go on a phone
-npm start
+# Required — point at your deployed (or LAN) Loopit backend. Simulators
+# can't reach localhost on the host machine; use your LAN IP.
+export EXPO_PUBLIC_BACKEND_URL=http://192.168.1.20:3000
 ```
 
-## Building native binaries
+## Running
 
-Expo SDK 52 ships with the **new architecture** enabled (`newArchEnabled: true`
-in `app.json`). The first build generates the `ios/` and `android/` projects
-from scratch.
+### Fastest: Expo Go on your phone
 
 ```bash
-# iOS (requires macOS + Xcode + a paid Apple Developer account)
-npm run ios
-
-# Android (requires Android Studio + JDK 21)
-npm run android
+npm start
+# Scan the QR with the Expo Go app (iOS App Store / Play Store).
 ```
 
-For store-ready builds, use EAS:
+Expo Go ships the JS, you see the UI instantly. Limits: no custom native
+modules (but none of ours need that for the feed + BubblePop demo).
+
+### iOS simulator (macOS + Xcode only)
+
+```bash
+npm run ios
+# First run does `expo prebuild` behind the scenes, generates ios/,
+# installs Pods, and boots the iPhone simulator.
+```
+
+### Android emulator (any OS with Android Studio + JDK 21)
+
+```bash
+npm run android
+# First run generates android/, builds the debug APK, and boots the
+# emulator.
+```
+
+### EAS build for store-ready binaries
 
 ```bash
 npm install -g eas-cli
 eas login
-eas build -p ios
-eas build -p android
+eas build -p ios       # → .ipa uploaded to App Store Connect
+eas build -p android   # → .aab uploaded to Play Console
 ```
 
-## Environment variables
+## Testing against a local backend
 
-Expo inlines anything prefixed `EXPO_PUBLIC_*` into the JS bundle at
-build time. Keep secrets out — anything in here ships to users.
+1. On the dev box: `cd ..` (repo root), `pnpm dev` to start Next.js on
+   `:3000`. Bind it to `0.0.0.0` so the phone can reach it:
+   ```bash
+   pnpm dev -- -H 0.0.0.0
+   ```
+2. Find your LAN IP (`ipconfig` / `ifconfig`), e.g. `192.168.1.20`.
+3. In `mobile/`, set `EXPO_PUBLIC_BACKEND_URL=http://192.168.1.20:3000`
+   and run `npm start`.
+4. Open Expo Go, scan the QR. The phone loads the feed from the live
+   backend.
 
-| Var | Purpose |
-|---|---|
-| `EXPO_PUBLIC_BACKEND_URL` | Required. HTTPS URL of the deployed Loopit backend. |
+### HTTP in release builds
 
-## Caveats
+iOS App Transport Security and Android cleartext-traffic rules block
+plain HTTP once you're not in dev mode. For a staging build pointing
+at an HTTP backend, add per-host exceptions:
 
-- HTTPS is effectively required. iOS ATS and Android cleartext-traffic
-  rules both block plain HTTP in release builds. For local dev against
-  `http://192.168.x.x:3000`, add ATS exceptions in `Info.plist` and
-  set `android:usesCleartextTraffic="true"`.
-- Apple review flags pure webview wrappers. Add one or two native
-  capabilities (camera via `expo-camera`, push via `expo-notifications`,
-  share via `expo-sharing`) before submitting.
-- The WebView owns the back gesture on Android — a back-button handler
-  (`App.tsx` → `BackHandler`) steps through WebView history before
-  letting the OS exit.
-- Cookies are shared with the web app's origin (`sharedCookiesEnabled`),
-  so a logged-in web session carries into the native shell on the same
-  device if the user ever opened Loopit in Safari / Chrome.
-- Cross-origin features like SSE and the generation agent work the same
-  as in any browser — if the backend has them, the WebView has them.
+**iOS** — `app.json` → `ios.infoPlist.NSAppTransportSecurity.NSExceptionDomains`:
+
+```json
+"NSAppTransportSecurity": {
+  "NSExceptionDomains": {
+    "192.168.1.20": { "NSExceptionAllowsInsecureHTTPLoads": true }
+  }
+}
+```
+
+**Android** — `app.json` → `android.usesCleartextTraffic: true`, or add
+a `network_security_config.xml` for per-host allow-listing.
+
+For production, serve HTTPS.
+
+## File layout
+
+```
+mobile/
+├── App.tsx                        # root shell: boot() + tab switcher
+├── index.js                       # registers App with Expo
+├── app.json                       # Expo config (iOS/Android IDs, perms)
+├── babel.config.js                # expo preset + reanimated plugin
+├── tsconfig.json
+└── src/
+    ├── lib/
+    │   ├── api.ts                 # fetch wrapper w/ CSRF capture + base URL
+    │   ├── store.ts               # zustand: booted, me, feed, like, follow
+    │   ├── types.ts               # mirror of app/lib/types.ts (don't drift)
+    │   ├── format.ts              # formatCount
+    │   └── theme.ts               # Tailwind → hex + gradient parsing
+    ├── components/
+    │   ├── BottomTabs.tsx         # floating tab bar (Feed/Search/Create/Inbox/Me)
+    │   ├── FeedItem.tsx           # per-card: rounded playable + actions + caption
+    │   ├── Gradient.tsx           # SVG linear gradient helper
+    │   └── Icons.tsx              # react-native-svg icons
+    ├── screens/
+    │   ├── FeedScreen.tsx         # FlatList paging + top Following/For You tabs
+    │   └── PlaceholderScreen.tsx  # used by every not-yet-ported screen
+    └── playables/
+        ├── index.tsx              # kind → native component
+        ├── BubblePop.tsx          # tap bubbles; full native port
+        └── Stub.tsx               # label for not-yet-ported kinds
+```
+
+## Extending
+
+To port a new screen:
+
+1. Create `src/screens/<Name>Screen.tsx` using `View` / `Text` /
+   `Pressable` / `ScrollView`. Reuse `src/lib/store.ts` — add any new
+   actions there and mirror them to the web's store shape so behavior
+   stays aligned.
+2. Wire it into `App.tsx`'s tab switch.
+3. If it needs native-only capability (camera, share, push), add the
+   Expo module (`expo-camera`, `expo-sharing`, `expo-notifications`)
+   and update `app.json` plugins + permissions.
+
+To port a new playable:
+
+1. Create `src/playables/<Kind>.tsx` with a `{ active }` prop.
+2. Register it in `src/playables/index.tsx`'s switch.
+3. Keep the same gesture/animation semantics as the web version.
+   Reanimated is already wired (babel plugin + dep).
+
+## Why not just reuse the web components?
+
+We can't. React Native has no DOM — `<div>` / `<span>` / `<button>` /
+CSS / Tailwind / Framer Motion don't exist. Cross-platform UI libraries
+that pretend otherwise (React Native Web, Tamagui, NativeWind) each
+leak real-world quirks. The pragmatic path is: share the logic (store,
+API client, types, i18n dicts), rewrite the render layer in RN
+primitives. Cost is linear in # of screens.
 
 ## Versions
 
-| Package | Version | Note |
-|---|---|---|
-| Expo | 52.x | New architecture enabled |
-| React Native | 0.76.x | Bundled with Expo 52 |
-| React | 18.3.1 | Pinned by Expo |
-| react-native-webview | 13.12.x | The actual WebView |
-| react-native-safe-area-context | 4.12.x | Notch + home-indicator insets |
+| Package | Version |
+|---|---|
+| Expo | ^52.0.0 (new architecture enabled) |
+| React Native | 0.76.5 |
+| React | 18.3.1 |
+| react-native-reanimated | ~3.16.1 |
+| react-native-svg | 15.8.0 |
+| react-native-safe-area-context | 4.12.0 |
+| zustand | ^5.0.12 |

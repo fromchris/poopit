@@ -409,11 +409,21 @@ Swapping the backend URL later: change `CAPACITOR_SERVER_URL`, rerun
 `pnpm cap:sync`, rebuild. The native binary itself doesn't need to
 change.
 
-### Option C — React Native / Expo shell
+### Option C — React Native / Expo (native port)
 
-A functionally equivalent alternative to Capacitor, built on React
-Native via Expo. Lives on the `react-native` branch under
+A true React Native port of the client — not a WebView. Lives on the
+`react-native` branch under
 [`mobile/`](https://github.com/fromchris/poopit/tree/react-native/mobile).
+
+Shares the zustand store shape, API client, and type definitions with
+the web (platform-agnostic). Rewrites the render layer in RN primitives
+(`View` / `Text` / `Pressable`, `react-native-svg` icons, Reanimated
+animations). Same backend, same wire format.
+
+Status: shell + feed + one playable (BubblePop) fully native. Other
+screens/playables render a clean placeholder pending incremental port.
+See [`mobile/README.md`](https://github.com/fromchris/poopit/blob/react-native/mobile/README.md)
+for the porting status table, file layout, and testing workflow.
 
 ```bash
 git checkout react-native
@@ -421,12 +431,9 @@ cd mobile
 npm install
 export EXPO_PUBLIC_BACKEND_URL=https://loopit.example.com
 npm run ios        # or: npm run android
+# — or —
+npm start          # QR for Expo Go on a physical phone
 ```
-
-Same WebView pattern — native shell points at the deployed backend,
-no frontend code duplicated. Pick this over Capacitor only if you
-already have a React Native toolchain in the org, or you're
-planning to add native screens alongside the WebView later.
 
 ### Option D — TWA (Android-only, smaller footprint)
 
