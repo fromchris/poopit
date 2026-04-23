@@ -8,7 +8,6 @@ import { CreateScreen } from "./components/CreateScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { SearchScreen } from "./components/SearchScreen";
 import { InboxScreen } from "./components/InboxScreen";
-import { EditorScreen } from "./components/EditorScreen";
 import { AuthScreen } from "./components/AuthScreen";
 import { SwipeHint } from "./components/SwipeHint";
 import { PwaInstall } from "./components/PwaInstall";
@@ -16,17 +15,7 @@ import { Toast } from "./components/Toast";
 import { api } from "./lib/api";
 import { useStore } from "./lib/store";
 import { parseInitialRouting, updateUrl } from "./lib/url";
-import type { Playable, PlayableKind } from "./lib/types";
-
-type EditorState =
-  | null
-  | {
-      source: Playable | null;
-      prompt: string;
-      kind?: PlayableKind;
-      theme?: string;
-      bundleUrl?: string | null;
-    };
+import type { Playable } from "./lib/types";
 
 type PendingJob = {
   id: string;
@@ -39,7 +28,6 @@ type PendingJob = {
 export default function Home() {
   const [tab, setTab] = useState<Tab>("feed");
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
-  const [editor, setEditor] = useState<EditorState>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
 
@@ -47,7 +35,6 @@ export default function Home() {
   const me = useStore((s) => s.me);
   const boot = useStore((s) => s.boot);
   const toasts = useStore((s) => s.toasts);
-  const publish = useStore((s) => s.publish);
   const toast = useStore((s) => s.toast);
   const jumpToPlayable = useStore((s) => s.jumpToPlayable);
   const subscribeNotifications = useStore((s) => s.subscribeNotifications);
@@ -176,38 +163,6 @@ export default function Home() {
     [me, toast]
   );
 
-  const handlePublish = async (
-    title: string,
-    description: string,
-    tags: string[],
-    draft: { kind: PlayableKind; theme: string }
-  ) => {
-    if (!me) {
-      setAuthOpen(true);
-      return;
-    }
-    const source = editor?.source ?? null;
-    const bundleUrl = editor?.bundleUrl ?? null;
-    try {
-      const p = await publish({
-        kind: draft.kind,
-        title,
-        description,
-        theme: draft.theme,
-        tags,
-        sourceId: source?.id ?? null,
-        bundleUrl: bundleUrl ?? undefined,
-      });
-      setEditor(null);
-      setTab("feed");
-      jumpToPlayable(p);
-      toast("Published to your Feed");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Publish failed";
-      toast(msg);
-    }
-  };
-
   const openPlayable = (p: Playable) => {
     jumpToPlayable(p);
     setTab("feed");
@@ -253,24 +208,6 @@ export default function Home() {
               }
             }}
             onGenerate={(prompt, mode, atts) => runGenerate(prompt, null, mode, atts)}
-            onPickTemplate={({ kind, theme, name }) => {
-              const source: Playable = {
-                id: `tpl-${kind}`,
-                kind,
-                title: name,
-                description: `start from ${name}`,
-                tags: ["template"],
-                theme,
-                author: {
-                  handle: "@studio.loopit",
-                  avatar: "🎬",
-                  avatarBg: "from-yellow-400 to-orange-500",
-                  isFollowing: false,
-                },
-                stats: { likes: 0, comments: 0, remixes: 0, plays: 0 },
-              };
-              setEditor({ source, prompt: "" });
-            }}
           />
         )}
         {tab === "inbox" && <InboxScreen onOpenPlayable={openPlayable} />}
@@ -283,24 +220,7 @@ export default function Home() {
       </div>
       <BottomTabs tab={tab} onChange={setTab} />
 
-      <SwipeHint enabled={tab === "feed" && !editor && !authOpen} />
-
-      <AnimatePresence>
-        {editor && (
-          <EditorScreen
-            open
-            source={editor.source}
-            initialPrompt={editor.prompt}
-            presetKind={editor.kind}
-            presetTheme={editor.theme}
-            onClose={() => setEditor(null)}
-            onPublish={(title, desc, tags, draft) =>
-              handlePublish(title, desc, tags, draft)
-            }
-          />
-        )}
-      </AnimatePresence>
-
+      <SwipeHint enabled={tab === "feed" && !authOpen} />
 
       <AnimatePresence>
         {authOpen && <AuthScreen onClose={() => setAuthOpen(false)} />}
