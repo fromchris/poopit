@@ -23,6 +23,7 @@ PWA shell.
 - [Playables](#playables)
 - [Generation agent](#generation-agent)
 - [Tech stack](#tech-stack)
+- [Packaging](#packaging)
 - [Deploying](#deploying)
 - [Production readiness](#production-readiness)
 
@@ -211,6 +212,7 @@ From `.env.example`. Only the first two are required.
 pnpm dev           # Next.js dev server (Turbopack)
 pnpm build         # prisma generate + next build
 pnpm start         # production server
+pnpm package       # build + bundle a deployable tarball (see below)
 
 pnpm db:push       # push schema to DB without a migration (dev)
 pnpm db:migrate    # generate + apply a migration (dev)
@@ -299,10 +301,62 @@ Gateway quirks handled:
 - **Validation**: Zod on every route.
 - **PWA**: manifest + a handwritten service worker (no workbox).
 
-## Deploying
+## Packaging
+
+Two ways to produce a deployable artifact:
+
+### 1. Self-contained tarball (no Docker needed)
+
+```bash
+pnpm package
+# → dist/loopit-<version>-<sha>.tar.gz   (~175 MB)
+```
+
+The script runs `next build` with `output: "standalone"`, then assembles:
+
+```
+dist/loopit-<version>-<sha>/
+├── server.js            # minimal Node server (no need for `next start`)
+├── node_modules/        # traced — only packages actually imported at runtime
+├── .next/static/        # client JS/CSS chunks
+├── public/              # static assets (PWA manifest, icons, drama bundle)
+├── prisma/schema.prisma # for running migrations against the prod DB
+├── package.json
+├── .env.example
+└── README.txt           # operator runbook for just this bundle
+```
+
+Deploy target only needs **Node 20+**. To run:
+
+```bash
+tar xzf loopit-<version>-<sha>.tar.gz
+cd loopit-<version>-<sha>
+cp .env.example .env    # edit DATABASE_URL, SESSION_SECRET, OPENAI_*
+node server.js          # listens on $PORT (default 3000)
+```
+
+For first-time Postgres migrations the bundle ships the schema but not
+the Prisma CLI — install it separately on the target or run migrations
+from a dev checkout against the prod `DATABASE_URL`:
+
+```bash
+npm install --no-save prisma
+DATABASE_URL=<prod-url> npx prisma migrate deploy
+```
+
+### 2. Docker image
 
 ```bash
 docker build -t loopit:$(git rev-parse --short HEAD) .
+docker push <your-registry>/loopit:latest
+```
+
+The `Dockerfile` is multi-stage and produces a small runtime image. See
+[`docker-compose.yml`](./docker-compose.yml) for a one-node deploy.
+
+## Deploying
+
+```bash
 docker compose up -d
 docker compose exec app pnpm prisma migrate deploy
 docker compose exec app pnpm db:seed

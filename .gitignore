@@ -46,6 +46,7 @@ next-env.d.ts
 
 # build artifact we don't track
 /loopit-prototype.zip
+/dist
 
 # dev SQLite (schema is in prisma/schema.prisma; data is ephemeral)
 /prisma/**/*.db

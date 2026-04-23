@@ -3,6 +3,26 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Emit a self-contained server at .next/standalone/ for packaging.
+  // `pnpm package` copies public/ and .next/static/ in alongside it,
+  // since Next only traces server-loadable files into standalone/.
+  output: "standalone",
+  // Prisma's query engine and generated client aren't always picked up
+  // by the file tracer — include them explicitly so `node server.js`
+  // can open a DB connection without installing node_modules.
+  outputFileTracingIncludes: {
+    "/*": [
+      "node_modules/@prisma/client/**/*",
+      "node_modules/.prisma/client/**/*",
+      "prisma/schema.prisma",
+    ],
+  },
+  // Keep dev runtime data out of the traced standalone bundle. The
+  // storage/ tree holds uploads, generated bundles, and the agent
+  // debug dump — none of which should ship.
+  outputFileTracingExcludes: {
+    "/*": ["storage/**/*"],
+  },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
 
