@@ -24,7 +24,7 @@ PWA shell.
 - [Generation agent](#generation-agent)
 - [Tech stack](#tech-stack)
 - [Deploying](#deploying)
-- [Known limitations](#known-limitations)
+- [Production readiness](#production-readiness)
 
 ---
 
@@ -312,19 +312,112 @@ For the full story — Postgres switchover, CDN cache rules, S3 wiring,
 HLS transcoding, reverse-proxy SSE tuning, monitoring, and the security
 checklist — see [`RUNBOOK.md`](./RUNBOOK.md).
 
-## Known limitations
+## Production readiness
 
-- Video in the shipped drama is inlined as a base64 data URI (35 MB).
-  For production, split it out to HLS and serve from a CDN
-  (script + player refactor in RUNBOOK).
-- The fs storage driver is fine for a single node; the s3 driver
-  interface is in place but the `PutObjectCommand` call is a stub —
-  install `@aws-sdk/client-s3` and fill it in.
-- Email verification and 2FA are out of scope for the prototype.
-- The agent's hard timeout is 5 minutes; longer generations need a
-  queue upgrade (BullMQ / Redis) before you can scale out.
+**Short answer**: it runs, and the security surface is taken seriously,
+but it is not yet a production deploy. Here's the honest state.
+
+### What is production-grade already
+
+- Auth: bcrypt (cost 12), httpOnly + `SameSite=Lax` session cookies,
+  CSRF double-submit, SHA-256-hashed session tokens in DB, guest
+  accounts with recovery codes.
+- Zod validation on every route, Prisma parameterized queries, per-route
+  rate limits (token-bucket, env-tuned).
+- Structured JSON logs (pino) to stdout, `/api/health` liveness probe.
+- Database schema + indexes + seed + migration scripts.
+- Docker + compose shipping config.
+- Agent safety: Babel AST allowlist on generated bundles
+  (no `eval`, `fetch`, `document.cookie`, `localStorage`,
+  `window.parent`), iframe `sandbox="allow-scripts"`, CSP-ready.
+- SSE dedup (server `emitted` set + client `seenIds` set) so
+  notifications don't double-fire across refreshes or reconnects.
+
+### Blockers — fix before opening to the public
+
+1. **SQLite → Postgres.** Change the datasource in
+   `prisma/schema.prisma` and run `prisma migrate deploy`. Add the
+   `pg_trgm` + trending + unread-notification indexes from RUNBOOK.
+2. **Generate a real `SESSION_SECRET`.** The value in `.env.example`
+   is a placeholder. Use
+   `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
+3. **S3 driver is a stub.** `app/server/storage.ts` has the interface
+   but the S3 branch's `PutObjectCommand` isn't wired. Install
+   `@aws-sdk/client-s3` and fill it in before switching from `fs`.
+4. **i18n hydration mismatch.** `app/lib/i18n.ts` reads
+   `navigator.language` during store init, so SSR renders `en` and
+   the client hydrates `zh` on Chinese-locale browsers → React
+   hydration error. Non-fatal in prod, but causes an extra render and
+   blocks Next.js dev overlay. A `useEffect` that defers the locale
+   read fixes it in ~5 lines.
+5. **Single-node assumptions.** Rate-limits and SSE broadcast are
+   in-process. Running >1 replica needs Redis (or equivalent) for
+   both — otherwise buckets reset and notifications only reach the
+   process that holds the stream.
+6. **Reverse-proxy SSE tuning.** nginx (and most proxies) buffer by
+   default and will break streaming. Disable buffering on
+   `/api/notifications/stream` and `/api/generate` — config snippet
+   in RUNBOOK.
+7. **Real LLM credentials.** The agent is wired to a custom gateway
+   for development. Point `OPENAI_BASE_URL` / `OPENAI_API_KEY` at
+   your production endpoint and verify cost + rate limits.
+
+### Recommended — before scaling or taking paid users
+
+- **Background job queue.** The in-process runner is fine for one
+  node and short jobs; swap to BullMQ / Redis once you have >1
+  replica or generations that outlast a 5-minute timeout.
+- **Real content moderation.** Current moderation is a local
+  blocklist with a `moderateAsync` hook. Wire it to OpenAI
+  moderation / Perspective / Sightengine.
+- **HLS for the drama.** The shipped interactive drama
+  (`public/dramas/dqjtj-main.html`) inlines its video as a 35 MB
+  base64 data URI. RUNBOOK has the ffmpeg transcoding script and
+  player refactor.
+- **Image/video upload pipeline.** Uploads land on disk raw — add
+  mime sniffing beyond the extension check, EXIF stripping, and a
+  thumbnail / poster pipeline (sharp is already a dependency).
+- **CDN in front.** Static assets already ship
+  `Cache-Control: immutable`. Point Cloudflare / Fastly / Bunny at
+  the origin with the rules in RUNBOOK.
+- **Monitoring.** Ship pino stdout to Loki / Datadog / CloudWatch
+  and alert on `/api/health` 5xx rate, p95 latency, generate-job
+  failure rate.
+- **Automated tests.** Coverage is currently zero. At minimum: an
+  auth + feed happy-path test and a schema regression test per API
+  route.
+- **Email verification and 2FA.** Out of scope for the prototype;
+  TOTP with `otplib` is straightforward once you turn on email
+  sign-up.
+
+### Known limitations / compromises
+
 - i18n covers UI chrome; generated playable captions are whatever the
   model emits.
+- Agent hard timeout is 5 minutes; hitting it fails the job rather
+  than resuming.
+- Content reports land in the DB but there's no triage UI.
+- 12 built-in playable renderers are shipped; code-mode
+  generations produce arbitrary HTML in a sandboxed iframe.
+
+### Security checklist
+
+| Item | Status |
+|---|---|
+| CSRF double-submit on state-changing routes | ✅ |
+| httpOnly + SameSite session cookies, `Secure` in prod | ✅ |
+| bcrypt password hashing (cost 12) | ✅ |
+| SHA-256 session tokens in DB (no plaintext) | ✅ |
+| Zod validation on every route | ✅ |
+| Prisma parameterized queries (no raw SQL from user input) | ✅ |
+| Per-route rate limits | ✅ (in-memory) |
+| Content moderation hook | ✅ (local blocklist) |
+| Sandboxed iframe for generated HTML | ✅ |
+| AST allowlist on generated bundles | ✅ |
+| Strict CSP on app, relaxed for `/dramas/*` | ✅ |
+| Email verification | ❌ |
+| 2FA (TOTP) | ❌ |
+| WAF / DDoS protection | ❌ (CDN layer) |
 
 ---
 
