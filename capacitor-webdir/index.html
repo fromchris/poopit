@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Loopit</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+      }
+      .logo {
+        font-size: 3rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #d946ef, #f43f5e, #f59e0b);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        letter-spacing: -0.02em;
+      }
+      .msg {
+        margin-top: 1.25rem;
+        opacity: 0.7;
+        font-size: 0.95rem;
+        max-width: 24rem;
+        line-height: 1.5;
+      }
+      code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.35rem;
+        font-size: 0.85em;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="logo">Loopit</div>
+      <p class="msg">
+        This build has no backend URL configured. Set
+        <code>CAPACITOR_SERVER_URL</code> before running
+        <code>pnpm cap:sync</code>, then rebuild the iOS / Android project.
+      </p>
+    </div>
+  </body>
+</html>

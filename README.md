@@ -25,6 +25,7 @@ PWA shell.
 - [Tech stack](#tech-stack)
 - [Packaging](#packaging)
 - [Deploying](#deploying)
+- [Mobile app (iOS / Android)](#mobile-app-ios--android)
 - [Production readiness](#production-readiness)
 
 ---
@@ -365,6 +366,71 @@ docker compose exec app pnpm db:seed
 For the full story — Postgres switchover, CDN cache rules, S3 wiring,
 HLS transcoding, reverse-proxy SSE tuning, monitoring, and the security
 checklist — see [`RUNBOOK.md`](./RUNBOOK.md).
+
+## Mobile app (iOS / Android)
+
+Loopit is a full-stack app, so the mobile shells don't bundle the server
+— they're WebView wrappers pointing at a deployed backend. Pick one of
+three distribution paths:
+
+### Option A — PWA "Add to Home Screen" (zero build)
+
+The app ships a manifest + service worker, so Safari / Chrome on a
+phone already offers "Add to Home Screen". Users get a standalone
+icon, full-screen shell, offline cached UI. No app-store account
+needed. Good enough for most use cases.
+
+### Option B — Capacitor (iOS + Android store-ready)
+
+Thin native shell that loads your backend URL in a WebView. Same code
+for both platforms.
+
+```bash
+# 1. point at your deployed backend
+export CAPACITOR_SERVER_URL=https://loopit.example.com
+
+# 2. generate the native projects (one-time)
+pnpm cap:add:ios         # requires macOS + Xcode
+pnpm cap:add:android     # requires Android Studio + JDK 21
+
+# 3. sync config + web fallback into each project
+pnpm cap:sync
+
+# 4. open in the native IDE to build / sign / upload
+pnpm cap:open:ios        # → archive for App Store
+pnpm cap:open:android    # → signed AAB for Play Store
+```
+
+The scaffolded `ios/` and `android/` projects are tracked in git once
+generated; build outputs (`build/`, `Pods/`, `.gradle/`,
+`DerivedData/`) are gitignored.
+
+Swapping the backend URL later: change `CAPACITOR_SERVER_URL`, rerun
+`pnpm cap:sync`, rebuild. The native binary itself doesn't need to
+change.
+
+### Option C — TWA (Android-only, smaller footprint)
+
+If you only need Play Store presence, Google's
+[bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) wraps
+the already-shipped PWA into a Trusted Web Activity AAB — no
+WebView wrapper, uses Chrome under the hood. Much smaller binary
+than Capacitor. Doesn't help with iOS.
+
+### Caveats
+
+- The WebView must be allowed to reach your backend over HTTPS.
+  Plain HTTP requires `cleartext: true` in `capacitor.config.ts`
+  (done automatically when `CAPACITOR_SERVER_URL` starts with
+  `http://`) plus a network-security exception on Android.
+- App Store review may push back on "webview wrapper" apps that
+  don't use any native capability. Adding native plugins
+  (`@capacitor/camera`, `@capacitor/push-notifications`,
+  `@capacitor/share`) both improves the UX and reduces rejection
+  risk.
+- iOS builds require a Mac + a paid Apple Developer Program
+  account ($99/yr). Android only needs Android Studio locally and
+  a $25 one-time Play Console fee.
 
 ## Production readiness
 
