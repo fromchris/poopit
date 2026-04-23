@@ -19,17 +19,19 @@ adds a parallel native app under `mobile/` that hits the same API.
 | Area | Status | Notes |
 |---|---|---|
 | Root shell + bottom tabs | ✅ | `App.tsx`, `BottomTabs.tsx` |
-| Feed (snap-scroll + infinite) | ✅ | `FeedScreen` uses `FlatList` pagingEnabled |
+| Feed (snap-scroll + infinite + PTR) | ✅ | `FlatList` pagingEnabled + `RefreshControl` |
+| Jump-to-playable from search / profile | ✅ | `feedJumpToId` + `scrollToIndex` |
 | FeedItem layout | ✅ | Card + action row + caption row, mirrors web |
 | Gradient backgrounds | ✅ | `Gradient` via `react-native-svg` |
 | Tailwind color tokens | ✅ | Parsed out in `lib/theme.ts` |
-| Icons | ✅ | 17 icons via `react-native-svg` |
+| Icons | ✅ | 18 icons via `react-native-svg` |
 | Auth flow | ✅ | `AuthScreen`: sign in / sign up / guest + recovery code alert |
-| Bottom sheets | ✅ | Comment / Share / Remix / Overflow / Report |
+| Bottom sheets | ✅ | Comment / Share / Remix / Overflow / Report / Settings / EditProfile / FollowList |
 | Create screen | ✅ | Prompt + media picker (`expo-image-picker`) + pending jobs poll |
-| Inbox + notifications | ✅ | Read/unread list + SSE via `react-native-sse` |
+| Inbox (Notifications + Messages) | ✅ | Outer tabs + subtabs + SSE via `react-native-sse` |
+| DMs (conversation view) | ✅ | Full-screen modal, SSE live feed, send + receive |
 | Search | ✅ | Debounced `/api/search` + trending chips + 2-col results |
-| Profile | ✅ | Header + stats + Created/Liked/Remixed tabs + sign-out |
+| Profile | ✅ | Header + stats + Created/Liked tabs + gear → Settings |
 | Toast | ✅ | Bottom-center floating, fed from store |
 | Playables (12 kinds) | ✅ | All 12 render real content; see table below |
 
@@ -48,22 +50,18 @@ All the above work end-to-end against a running backend.
 | fidget-spinner | ✅ | Flick → velocity decay loop |
 | match-pair | ✅ | 4×4 emoji memory grid |
 | rhythm-tap | ✅ | 600 ms beat, hit-window scoring |
-| shake-mix | ✅ | Tap-to-swap recipes (real shake = `expo-sensors` later) |
+| shake-mix | ✅ | Real shake via `expo-sensors` `Accelerometer` + tap fallback |
 | interactive-drama | ✅ | `react-native-webview` hosts the HTML bundle |
 | llm-bundle | ✅ | Same WebView wrapper as drama |
 
 ## Known scope cuts
 
-- **DMs** (`/api/conversations/*`): UI skipped — the web never wired
-  it into a tab either.
-- **Settings sheet / Edit-profile sheet / Followers list sheet**:
-  reachable via Profile in the web; not yet carried over.
-- **Real device-motion shake** for `shake-mix`: uses a tap button
-  instead; `expo-sensors`' `Accelerometer` would be a small add.
-- **Pull-to-refresh** on the feed: web has it; RN uses the snap
-  paging model which makes PTR awkward on vertical feeds.
-- **Jump-to-playable** from search/profile: `feedJumpToId` isn't
-  wired in the store yet; search currently just pops back to feed.
+- **Reduced-motion / data-saver toggles** and the **language picker**
+  live in the web's Settings sheet. The RN Settings sheet is
+  account-focused only (i18n strings on RN would need the web's dict
+  port, which wasn't a goal).
+- **Report triage UI** isn't in the web either — reports land in the
+  DB for out-of-band review.
 
 ## Setup
 
@@ -173,19 +171,23 @@ mobile/
     │   ├── Icons.tsx              # 17 icons via react-native-svg
     │   └── Toast.tsx              # bottom-center toasts from store
     ├── screens/
-    │   ├── FeedScreen.tsx         # paging FlatList + Following/For You + sheets
+    │   ├── FeedScreen.tsx         # paging FlatList + PTR + Following/For You + sheets
     │   ├── SearchScreen.tsx       # debounced /api/search + trending chips
     │   ├── CreateScreen.tsx       # prompt + media picker + pending jobs
-    │   ├── InboxScreen.tsx        # notifications list (SSE-fed)
-    │   ├── ProfileScreen.tsx      # header + stats + created/liked tabs
+    │   ├── InboxScreen.tsx        # notifications + Messages (DMs list)
+    │   ├── ConversationScreen.tsx # full-screen DM view (SSE + send)
+    │   ├── ProfileScreen.tsx      # header + stats + tabs + gear → settings
     │   ├── AuthScreen.tsx         # sign in / sign up / guest
-    │   └── PlaceholderScreen.tsx  # unused now; kept for future stubs
+    │   └── PlaceholderScreen.tsx  # kept for ad-hoc stubs
     ├── sheets/
     │   ├── CommentSheet.tsx       # load + post + like + delete comments
     │   ├── ShareSheet.tsx         # copy link / native Share
     │   ├── RemixSheet.tsx         # prompt → /api/generate
     │   ├── OverflowSheet.tsx      # hide / report / delete (if owner)
-    │   └── ReportSheet.tsx        # /api/reports
+    │   ├── ReportSheet.tsx        # /api/reports
+    │   ├── SettingsSheet.tsx      # account + sign-out (reduced-motion skipped)
+    │   ├── EditProfileSheet.tsx   # handle / bio / avatar emoji
+    │   └── FollowListSheet.tsx    # followers / following with in-line follow btn
     └── playables/
         ├── index.tsx              # kind → component
         ├── BubblePop.tsx          # spawn + rise + pop

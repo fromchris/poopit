@@ -13,11 +13,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gradient } from "../components/Gradient";
+import { SettingsIcon } from "../components/Icons";
 import { api, ApiError } from "../lib/api";
 import { formatCount } from "../lib/format";
 import { parseGradient } from "../lib/theme";
 import { useStore } from "../lib/store";
 import type { Playable } from "../lib/types";
+import { EditProfileSheet } from "../sheets/EditProfileSheet";
+import { FollowListSheet } from "../sheets/FollowListSheet";
+import { SettingsSheet } from "../sheets/SettingsSheet";
 
 type Tab = "created" | "liked" | "remixed";
 
@@ -39,19 +43,23 @@ type UserProfile = {
 export function ProfileScreen({
   onOpenAuth,
   onOpenPlayable,
-  onSignOut,
 }: {
   onOpenAuth: () => void;
   onOpenPlayable: (p: Playable) => void;
-  onSignOut: () => void;
+  onSignOut?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const me = useStore((s) => s.me);
-  const signOut = useStore((s) => s.signOut);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tab, setTab] = useState<Tab>("created");
   const [liked, setLiked] = useState<Playable[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [followSheet, setFollowSheet] = useState<
+    null | "followers" | "following"
+  >(null);
 
   const load = useCallback(async () => {
     if (!me) return;
@@ -130,15 +138,33 @@ export function ProfileScreen({
               {/* Stats */}
               <View style={styles.statsRow}>
                 <Stat n={profile?.stats.playables ?? 0} label="playables" />
-                <Stat n={profile?.stats.followers ?? 0} label="followers" />
-                <Stat n={profile?.stats.following ?? 0} label="following" />
+                <Stat
+                  n={profile?.stats.followers ?? 0}
+                  label="followers"
+                  onPress={() => setFollowSheet("followers")}
+                />
+                <Stat
+                  n={profile?.stats.following ?? 0}
+                  label="following"
+                  onPress={() => setFollowSheet("following")}
+                />
                 <Stat n={profile?.stats.likes ?? 0} label="likes" />
               </View>
 
               {/* Actions */}
               <View style={styles.actionsRow}>
-                <Pressable onPress={signOut} style={styles.ghostBtn}>
-                  <Text style={styles.ghostText}>Sign out</Text>
+                <Pressable
+                  onPress={() => setEditOpen(true)}
+                  style={styles.ghostBtn}
+                >
+                  <Text style={styles.ghostText}>Edit profile</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setSettingsOpen(true)}
+                  style={styles.gearBtn}
+                  hitSlop={6}
+                >
+                  <SettingsIcon size={18} />
                 </Pressable>
               </View>
             </View>
@@ -198,17 +224,52 @@ export function ProfileScreen({
           </Pressable>
         )}
       />
+
+      <SettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onOpenEditProfile={() => setEditOpen(true)}
+      />
+      <EditProfileSheet
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          load();
+        }}
+      />
+      <FollowListSheet
+        open={followSheet !== null}
+        mode={followSheet ?? "followers"}
+        handle={me?.handle ?? null}
+        onClose={() => setFollowSheet(null)}
+      />
     </View>
   );
 }
 
-function Stat({ n, label }: { n: number; label: string }) {
-  return (
-    <View style={styles.stat}>
+function Stat({
+  n,
+  label,
+  onPress,
+}: {
+  n: number;
+  label: string;
+  onPress?: () => void;
+}) {
+  const content = (
+    <>
       <Text style={styles.statNum}>{formatCount(n)}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </>
   );
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={styles.stat}>
+        {content}
+      </Pressable>
+    );
+  }
+  return <View style={styles.stat}>{content}</View>;
 }
 
 function TabBtn({
@@ -321,6 +382,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     marginTop: 14,
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   ghostBtn: {
@@ -334,6 +396,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontWeight: "600",
+  },
+  gearBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ffffff22",
   },
   tabs: {
     flexDirection: "row",

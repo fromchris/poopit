@@ -1,9 +1,9 @@
-// Shake / tap to mix ingredients. Uses expo-sensors would be ideal
-// for real shake — here we fall back to a "shake" button so the port
-// stays dep-light. Each press swaps layers.
+// Shake the phone to swap drinks. Falls back to a tap button if the
+// accelerometer isn't available (web / simulator).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Accelerometer } from "expo-sensors";
 import { Gradient } from "../components/Gradient";
 
 const RECIPES = [
@@ -13,8 +13,42 @@ const RECIPES = [
   { name: "Midnight Coco", stops: ["#0f172a", "#4c1d95", "#ec4899"] },
 ];
 
-export function ShakeMix() {
+const THRESHOLD = 1.8; // g — any axis jump above this counts as a shake
+const COOLDOWN_MS = 500;
+
+export function ShakeMix({ active }: { active: boolean }) {
   const [i, setI] = useState(0);
+  const lastShakeRef = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    let sub: { remove: () => void } | null = null;
+    let mounted = true;
+    (async () => {
+      try {
+        const ok = await Accelerometer.isAvailableAsync();
+        if (!ok || !mounted) return;
+        Accelerometer.setUpdateInterval(100);
+        sub = Accelerometer.addListener(({ x, y, z }) => {
+          const mag = Math.sqrt(x * x + y * y + z * z);
+          const now = Date.now();
+          if (mag > THRESHOLD && now - lastShakeRef.current > COOLDOWN_MS) {
+            lastShakeRef.current = now;
+            setI((k) => (k + 1) % RECIPES.length);
+          }
+        });
+      } catch {
+        // accelerometer unavailable — tap button still works
+      }
+    })();
+    return () => {
+      mounted = false;
+      try {
+        sub?.remove();
+      } catch {}
+    };
+  }, [active]);
+
   const r = RECIPES[i]!;
   return (
     <View style={styles.root}>
@@ -26,16 +60,14 @@ export function ShakeMix() {
               key={k}
               style={[
                 styles.bubble,
-                {
-                  left: 10 + k * 22,
-                  bottom: 10 + (k % 3) * 20,
-                },
+                { left: 10 + k * 22, bottom: 10 + (k % 3) * 20 },
               ]}
             />
           ))}
         </View>
       </View>
       <Text style={styles.name}>{r.name}</Text>
+      <Text style={styles.hint}>shake phone or tap</Text>
       <Pressable
         style={styles.shakeBtn}
         onPress={() => setI((x) => (x + 1) % RECIPES.length)}
@@ -75,8 +107,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+  hint: {
+    marginTop: 2,
+    color: "#ffffff80",
+    fontSize: 11,
+  },
   shakeBtn: {
-    marginTop: 16,
+    marginTop: 12,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 999,

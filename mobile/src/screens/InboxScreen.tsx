@@ -1,19 +1,33 @@
-// Native port of app/components/InboxScreen.tsx. Consumes the store's
-// notifications list (seeded by loadNotifications + kept fresh by the
-// SSE subscriber wired up in App.tsx).
+// Inbox with outer tabs (Notifications / Messages) + notification
+// subtabs (all / likes / comments / follows). Native port of
+// app/components/InboxScreen.tsx.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   FlatList,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gradient } from "../components/Gradient";
+import { MessagesList } from "../components/MessagesList";
 import { parseGradient } from "../lib/theme";
 import { useStore, type Notification } from "../lib/store";
+import { ConversationScreen } from "./ConversationScreen";
+
+type OuterTab = "notifications" | "messages";
+type SubTab = "all" | "like" | "comment" | "follow";
+
+const SUBTABS: { id: SubTab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "like", label: "Likes" },
+  { id: "comment", label: "Comments" },
+  { id: "follow", label: "Follows" },
+];
 
 const LABELS: Record<string, string> = {
   like: "liked your playable",
@@ -31,11 +45,14 @@ export function InboxScreen() {
   const loadNotifications = useStore((s) => s.loadNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
 
+  const [outer, setOuter] = useState<OuterTab>("notifications");
+  const [inner, setInner] = useState<SubTab>("all");
+  const [conv, setConv] = useState<{ id: string; peer: string } | null>(null);
+
   useEffect(() => {
     if (!me) return;
     loadNotifications();
-    // mark read after a moment so the user sees the bold state briefly
-    const t = setTimeout(() => markAllRead(), 800);
+    const t = setTimeout(() => markAllRead(), 1500);
     return () => clearTimeout(t);
   }, [me, loadNotifications, markAllRead]);
 
@@ -48,22 +65,113 @@ export function InboxScreen() {
     );
   }
 
+  const filtered = notifications.filter((n) =>
+    inner === "all" ? true : n.type === inner,
+  );
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
+    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
       <Text style={styles.header}>Inbox</Text>
-      {notifications.length === 0 ? (
-        <View style={styles.full}>
-          <Text style={styles.emptyText}>Nothing new here.</Text>
-        </View>
+      <View style={styles.outerTabs}>
+        <OuterBtn
+          active={outer === "notifications"}
+          label="Notifications"
+          onPress={() => setOuter("notifications")}
+        />
+        <OuterBtn
+          active={outer === "messages"}
+          label="Messages"
+          onPress={() => setOuter("messages")}
+        />
+      </View>
+
+      {outer === "notifications" ? (
+        <>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.subtabs}
+          >
+            {SUBTABS.map((s) => (
+              <Pressable
+                key={s.id}
+                style={[
+                  styles.chip,
+                  inner === s.id && styles.chipActive,
+                ]}
+                onPress={() => setInner(s.id)}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    inner === s.id && styles.chipTextActive,
+                  ]}
+                >
+                  {s.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          {filtered.length === 0 ? (
+            <View style={styles.full}>
+              <Text style={styles.emptyText}>Nothing new here.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(n) => n.id}
+              contentContainerStyle={{ paddingBottom: 120 }}
+              renderItem={({ item }) => <Row n={item} />}
+            />
+          )}
+        </>
       ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(n) => n.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item }) => <Row n={item} />}
+        <MessagesList
+          onOpen={(id, handle) => setConv({ id, peer: handle })}
         />
       )}
+
+      <Modal
+        visible={conv !== null}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setConv(null)}
+      >
+        {conv && (
+          <ConversationScreen
+            conversationId={conv.id}
+            peerHandle={conv.peer}
+            onClose={() => setConv(null)}
+          />
+        )}
+      </Modal>
     </View>
+  );
+}
+
+function OuterBtn({
+  active,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.outerBtn, active && styles.outerBtnActive]}
+    >
+      <Text
+        style={[
+          styles.outerText,
+          active && { color: "#000" },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -108,10 +216,54 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
+    paddingTop: 4,
     paddingBottom: 10,
     fontSize: 22,
     fontWeight: "900",
     color: "#fff",
+  },
+  outerTabs: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  outerBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#ffffff14",
+  },
+  outerBtnActive: {
+    backgroundColor: "#fff",
+  },
+  outerText: {
+    color: "#ffffffd0",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  subtabs: {
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#ffffff14",
+  },
+  chipActive: {
+    backgroundColor: "#fff",
+  },
+  chipText: {
+    color: "#ffffffc0",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  chipTextActive: {
+    color: "#000",
   },
   emptyTitle: {
     fontSize: 22,

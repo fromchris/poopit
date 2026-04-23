@@ -93,6 +93,9 @@ type Actions = {
     attachments?: Array<{ kind: "image" | "video"; url: string; mime: string }>,
   ) => Promise<{ jobId: string } | null>;
 
+  jumpToPlayable: (p: Playable) => void;
+  clearJumpTo: () => void;
+
   toast: (msg: string) => void;
   dismissToast: () => void;
 };
@@ -468,6 +471,20 @@ export const useStore = create<State & Actions>((set, get) => ({
       get().toast(msg);
       return null;
     }
+  },
+
+  jumpToPlayable: (p) => {
+    set((s) => {
+      const exists = s.feed.some((x) => x.id === p.id);
+      return {
+        feed: exists ? s.feed : [p, ...s.feed],
+        feedJumpToId: p.id,
+      };
+    });
+  },
+
+  clearJumpTo: () => {
+    set({ feedJumpToId: null });
   },
 
   toast: (msg) => {

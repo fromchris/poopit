@@ -16,14 +16,21 @@ import { CreateScreen } from "./src/screens/CreateScreen";
 import { InboxScreen } from "./src/screens/InboxScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
+import type { Playable } from "./src/lib/types";
 
 export default function App() {
   const boot = useStore((s) => s.boot);
   const me = useStore((s) => s.me);
   const booted = useStore((s) => s.booted);
+  const jumpToPlayable = useStore((s) => s.jumpToPlayable);
 
   const [tab, setTab] = useState<Tab>("feed");
   const [authOpen, setAuthOpen] = useState(false);
+
+  const openPlayable = (p: Playable) => {
+    jumpToPlayable(p);
+    setTab("feed");
+  };
 
   useEffect(() => {
     boot().catch(() => {});
@@ -45,15 +52,7 @@ export default function App() {
       <StatusBar style="light" />
       <View style={styles.root}>
         {tab === "feed" && <FeedScreen />}
-        {tab === "search" && (
-          <SearchScreen
-            onOpenPlayable={() => {
-              // Jumping to a specific playable in the feed is a
-              // planned follow-up (needs store.feedJumpToId wiring).
-              setTab("feed");
-            }}
-          />
-        )}
+        {tab === "search" && <SearchScreen onOpenPlayable={openPlayable} />}
         {tab === "create" && (
           <CreateScreen onOpenAuth={() => setAuthOpen(true)} />
         )}
@@ -61,8 +60,7 @@ export default function App() {
         {tab === "profile" && (
           <ProfileScreen
             onOpenAuth={() => setAuthOpen(true)}
-            onOpenPlayable={() => setTab("feed")}
-            onSignOut={() => setTab("feed")}
+            onOpenPlayable={openPlayable}
           />
         )}
         <BottomTabs tab={tab} onChange={setTab} />

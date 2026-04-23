@@ -4,6 +4,7 @@ import {
   Dimensions,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -29,6 +30,9 @@ export function FeedScreen() {
   const nextCursor = useStore((s) => s.feedNextCursor);
   const loadFeed = useStore((s) => s.loadFeed);
   const setFeedTab = useStore((s) => s.setFeedTab);
+  const jumpId = useStore((s) => s.feedJumpToId);
+  const clearJumpTo = useStore((s) => s.clearJumpTo);
+  const [refreshing, setRefreshing] = useState(false);
 
   const insets = useSafeAreaInsets();
   const { height: winH } = Dimensions.get("window");
@@ -42,6 +46,17 @@ export function FeedScreen() {
       loadFeed(true).catch(() => {});
     }
   }, [feed.length, loading, loadFeed]);
+
+  // Consume jumpTo: scroll the feed to the requested playable.
+  useEffect(() => {
+    if (!jumpId) return;
+    const idx = feed.findIndex((p) => p.id === jumpId);
+    if (idx >= 0) {
+      listRef.current?.scrollToIndex({ index: idx, animated: false });
+      setActiveIdx(idx);
+      clearJumpTo();
+    }
+  }, [jumpId, feed, clearJumpTo]);
 
   const onViewable = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -72,6 +87,15 @@ export function FeedScreen() {
   const onEndReached = useCallback(() => {
     if (nextCursor && !loading) loadFeed(false).catch(() => {});
   }, [nextCursor, loading, loadFeed]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadFeed(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFeed]);
 
   if (error && feed.length === 0) {
     return (
@@ -109,6 +133,14 @@ export function FeedScreen() {
         viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#fff"
+            colors={["#ec4899"]}
+          />
+        }
         getItemLayout={(_, index) => ({
           length: winH,
           offset: winH * index,

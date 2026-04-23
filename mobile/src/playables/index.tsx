@@ -43,7 +43,7 @@ export function PlayableRenderer({
     case "rhythm-tap":
       return <RhythmTap active={active} />;
     case "shake-mix":
-      return <ShakeMix />;
+      return <ShakeMix active={active} />;
     case "squishy-blob":
       return <SquishyBlob />;
     case "tap-rain":
