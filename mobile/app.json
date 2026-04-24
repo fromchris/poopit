@@ -2,6 +2,7 @@
   "expo": {
     "name": "Loopit",
     "slug": "loopit",
+    "owner": "ccczzz",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "loopit",

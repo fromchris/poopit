@@ -36,15 +36,25 @@ export class ApiError extends Error {
 let csrf: string | null = null;
 
 /**
- * Pull the loopit_csrf value out of a Set-Cookie header so subsequent
- * POSTs can echo it back. RN's fetch implementation exposes set-cookie
- * on response headers (iOS: comma-joined; Android: same).
+ * Capture the CSRF token from either:
+ *  1. A Set-Cookie response header (works on web; iOS/Android RN fetch
+ *     usually suppresses Set-Cookie per the Fetch spec, so this is a
+ *     best-effort fallback), OR
+ *  2. A `csrfToken` field in the response body — the Loopit auth
+ *     endpoints always include this, so it's the reliable path on RN
+ *     regardless of the Fetch set-cookie quirk.
  */
-function captureCsrf(res: Response): void {
+function captureCsrfFromHeaders(res: Response): void {
   const raw = res.headers.get("set-cookie");
   if (!raw) return;
   const m = raw.match(/(?:^|[,;\s])loopit_csrf=([^;,\s]+)/);
   if (m) csrf = decodeURIComponent(m[1]!);
+}
+
+function captureCsrfFromBody(data: unknown): void {
+  if (!data || typeof data !== "object") return;
+  const t = (data as { csrfToken?: unknown }).csrfToken;
+  if (typeof t === "string" && t.length > 0) csrf = t;
 }
 
 type ReqInit = Omit<RequestInit, "body" | "headers"> & {
@@ -79,17 +89,38 @@ export async function api<T = unknown>(
     body = JSON.stringify(init.body);
   }
 
-  const res = await fetch(url, {
-    ...init,
-    method,
-    headers,
-    body,
-    credentials: "include",
-  });
-  captureCsrf(res);
+  // RN's native fetch has no built-in timeout — if the dev server or LAN
+  // hiccups the promise hangs forever. Race against an AbortController.
+  const ac = new AbortController();
+  const timeoutMs = 15000;
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      method,
+      headers,
+      body,
+      credentials: "include",
+      signal: ac.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if ((err as { name?: string }).name === "AbortError") {
+      throw new ApiError(0, "timeout", `Request timed out after ${timeoutMs}ms`);
+    }
+    throw new ApiError(
+      0,
+      "network_error",
+      err instanceof Error ? err.message : "Network error",
+    );
+  }
+  clearTimeout(timer);
+  captureCsrfFromHeaders(res);
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   const data = text ? safeParse(text) : null;
+  captureCsrfFromBody(data);
   if (!res.ok) {
     const e = (
       data as

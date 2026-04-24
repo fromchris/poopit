@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  PanResponder,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -43,11 +44,47 @@ export function FeedScreen() {
   const current = feed[activeIdx] ?? null;
   const t = useT();
 
+  // FlatList never handles touches on the playable card itself —
+  // it's permanently scrollEnabled=false. A dedicated bottom strip
+  // absorbs vertical flicks to page between cards.
+
+  // PanResponder lives on the absolute-positioned nav strip below.
+  // onStartShouldSetPanResponder is false so buttons (like/comment/share)
+  // underneath still receive taps. onMoveShould... claims only on a
+  // clear vertical flick, then scrolls one card.
+  const navResponder = useMemo(
+    () =>
+      PanResponder.create({
+        // The strip no longer overlaps any Pressables, so claim eagerly
+        // — taps inside this zone still fire (onPanResponderRelease
+        // sees zero dy and does nothing).
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderRelease: (_, g) => {
+          if (g.dy < -30 && activeIdx + 1 < feed.length) {
+            listRef.current?.scrollToIndex({
+              index: activeIdx + 1,
+              animated: true,
+            });
+          } else if (g.dy > 30 && activeIdx - 1 >= 0) {
+            listRef.current?.scrollToIndex({
+              index: activeIdx - 1,
+              animated: true,
+            });
+          }
+        },
+      }),
+    [activeIdx, feed.length],
+  );
+
+  // Pre-fetch next page when user is close to the end, since
+  // onEndReached won't fire (scrollEnabled=false).
   useEffect(() => {
-    if (feed.length === 0 && !loading) {
-      loadFeed(true).catch(() => {});
+    if (nextCursor && !loading && activeIdx >= feed.length - 3) {
+      loadFeed(false).catch(() => {});
     }
-  }, [feed.length, loading, loadFeed]);
+  }, [activeIdx, feed.length, nextCursor, loading, loadFeed]);
 
   // Consume jumpTo: scroll the feed to the requested playable.
   useEffect(() => {
@@ -99,57 +136,85 @@ export function FeedScreen() {
     }
   }, [loadFeed]);
 
-  if (error && feed.length === 0) {
-    return (
-      <View style={styles.full}>
-        <Text style={styles.errTitle}>{t("feed.error.title")}</Text>
-        <Text style={styles.errBody}>{error}</Text>
-        <Pressable style={styles.retryBtn} onPress={() => loadFeed(true)}>
-          <Text style={styles.retryText}>{t("feed.retry")}</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  if (feed.length === 0 && loading) {
-    return (
-      <View style={styles.full}>
-        <ActivityIndicator size="large" color="#ec4899" />
-      </View>
-    );
-  }
+  const isErrorState = !!error && feed.length === 0;
+  const isLoadingState = feed.length === 0 && loading;
+  const isEmptyState = feed.length === 0 && !loading && !error;
 
   return (
     <View style={styles.root}>
-      <FlatList
-        ref={listRef}
-        data={feed}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        pagingEnabled
-        snapToInterval={winH}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewable}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#fff"
-            colors={["#ec4899"]}
+      {/* Body: feed OR error/loading/empty — always rendered inside
+          the same root so the TopBar + nav strip stay reachable. */}
+      {isErrorState ? (
+        <View style={styles.full}>
+          <Text style={styles.errTitle}>{t("feed.error.title")}</Text>
+          <Text style={styles.errBody}>{error}</Text>
+          <Pressable style={styles.retryBtn} onPress={() => loadFeed(true)}>
+            <Text style={styles.retryText}>{t("feed.retry")}</Text>
+          </Pressable>
+        </View>
+      ) : isLoadingState ? (
+        <View style={styles.full}>
+          <ActivityIndicator size="large" color="#ec4899" />
+        </View>
+      ) : isEmptyState ? (
+        <View style={styles.full}>
+          <Text style={styles.emptyText}>
+            {feedTab === "following"
+              ? t("feed.emptyFollowing")
+              : t("feed.emptyForYou")}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={feed}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          pagingEnabled
+          snapToInterval={winH}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          showsVerticalScrollIndicator={false}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
+          scrollEnabled={false}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.5}
+          initialNumToRender={1}
+          windowSize={3}
+          maxToRenderPerBatch={2}
+          removeClippedSubviews
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#fff"
+              colors={["#ec4899"]}
+            />
+          }
+          getItemLayout={(_, index) => ({
+            length: winH,
+            offset: winH * index,
+            index,
+          })}
+        />
+      )}
+
+      {/* Nav overlay — always claims on a vertical flick. No-op when
+          the feed is empty (scrollToIndex on 0 items is safe). */}
+      {!isErrorState && !isLoadingState && !isEmptyState && (
+        <>
+          <View
+            style={styles.navStrip}
+            {...navResponder.panHandlers}
           />
-        }
-        getItemLayout={(_, index) => ({
-          length: winH,
-          offset: winH * index,
-          index,
-        })}
-      />
-      {/* Top bar overlay */}
+          <View pointerEvents="none" style={styles.navHint}>
+            <View style={styles.navHintPill} />
+          </View>
+        </>
+      )}
+
+      {/* Top bar always visible so the user can always switch tabs. */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <TopTab
           label={t("top.following")}
@@ -230,6 +295,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     padding: 24,
   },
+  navStrip: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    // The empty gap between the caption row and BottomTabs (pb-88 in
+    // FeedItem, minus 8px for the handle). 80px tall — tall enough to
+    // flick, doesn't overlap any buttons so tap vs pan doesn't race.
+    bottom: 80,
+    height: 80,
+    backgroundColor: "transparent",
+  },
+  navHint: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 150,
+    alignItems: "center",
+  },
+  navHintPill: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#ffffff50",
+  },
   topBar: {
     position: "absolute",
     top: 0,
@@ -259,6 +348,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+  },
+  emptyText: {
+    color: "#ffffff90",
+    fontSize: 14,
+    textAlign: "center",
+    paddingHorizontal: 32,
   },
   errBody: {
     marginTop: 8,

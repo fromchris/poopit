@@ -138,21 +138,21 @@ export function ProfileScreen({
               {/* Stats */}
               <View style={styles.statsRow}>
                 <Stat
-                  n={profile?.stats.playables ?? 0}
+                  n={profile?.stats?.playables ?? 0}
                   label={t("profile.stat.playables")}
                 />
                 <Stat
-                  n={profile?.stats.followers ?? 0}
+                  n={profile?.stats?.followers ?? 0}
                   label={t("profile.stat.followers")}
                   onPress={() => setFollowSheet("followers")}
                 />
                 <Stat
-                  n={profile?.stats.following ?? 0}
+                  n={profile?.stats?.following ?? 0}
                   label={t("profile.stat.following")}
                   onPress={() => setFollowSheet("following")}
                 />
                 <Stat
-                  n={profile?.stats.likes ?? 0}
+                  n={profile?.stats?.likes ?? 0}
                   label={t("profile.stat.likes")}
                 />
               </View>

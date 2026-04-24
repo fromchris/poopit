@@ -86,8 +86,19 @@ export async function generateBundle(opts: {
       ? { role: "user", content: userText }
       : { role: "user", content: userContent };
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const MAX_ATTEMPTS = 3;
+  let lastErr = "retry exhausted";
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    // Exponential backoff between retries (0ms, 1s, 3s).
+    if (attempt > 0) {
+      const delay = attempt === 1 ? 1000 : 3000;
+      await new Promise((r) => setTimeout(r, delay));
+      logger.info({ attempt }, "code-mode retrying");
+    }
+
     let html = "";
+    let streamFailed = false;
     try {
       for await (const ev of streamResponses({
         model: MODEL,
@@ -109,20 +120,23 @@ export async function generateBundle(opts: {
         }
       }
     } catch (err) {
-      logger.error({ err }, "code-mode model error");
-      return {
-        ok: false,
-        reason: err instanceof Error ? `model: ${err.message}` : "model error",
-      };
+      streamFailed = true;
+      lastErr = err instanceof Error ? err.message : "model error";
+      logger.error({ err, attempt }, "code-mode model error (will retry)");
     }
+
+    if (streamFailed) continue;
 
     const cleaned = stripFences(html).trim();
     if (!/^<!doctype html/i.test(cleaned) && !/^<html/i.test(cleaned)) {
+      lastErr = "model returned non-HTML";
+      logger.warn({ attempt, len: cleaned.length }, "code-mode not HTML");
       continue;
     }
 
     const check = analyzeBundle(cleaned);
     if (!check.ok) {
+      lastErr = `rejected: ${check.reason}`;
       logger.warn({ reason: check.reason, attempt }, "code-mode rejected");
       continue;
     }
@@ -147,7 +161,7 @@ export async function generateBundle(opts: {
     }
   }
 
-  return { ok: false, reason: "moderation or retry exhausted" };
+  return { ok: false, reason: `model: ${lastErr}` };
 }
 
 function stripFences(s: string): string {

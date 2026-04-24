@@ -7,7 +7,6 @@ import {
   FlatList,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -80,11 +79,7 @@ export function InboxScreen() {
 
       {outer === "notifications" ? (
         <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subtabs}
-          >
+          <View style={styles.subtabs}>
             {SUBTABS.map((s) => (
               <Pressable
                 key={s.id}
@@ -104,7 +99,7 @@ export function InboxScreen() {
                 </Text>
               </Pressable>
             ))}
-          </ScrollView>
+          </View>
           {filtered.length === 0 ? (
             <View style={styles.full}>
               <Text style={styles.emptyText}>{t("inbox.empty")}</Text>
@@ -244,11 +239,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   subtabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
   chip: {
+    alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
